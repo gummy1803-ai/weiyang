@@ -151,10 +151,10 @@ function updateGroupCamera() {
     if (cameraState.radius > CONFIG.maxDistance) {
         cameraState.radius = CONFIG.maxDistance;
     }
-    // 空闲自转(无手势时系统缓慢旋转,保持动态感)
-    if (!cameraState.isFist && !cameraState.isOpen && Math.abs(cameraState.handRotation) < 0.1) {
-        cameraState.phi -= 0.001;
-    }
+    // 空闲自转:已禁用,原始版默认固定不动
+    // if (!cameraState.isFist && !cameraState.isOpen && Math.abs(cameraState.handRotation) < 0.1) {
+    //     cameraState.phi -= 0.001;
+    // }
     const r = cameraState.radius;
     camera.position.x = r * Math.sin(cameraState.theta) * Math.sin(cameraState.phi);
     camera.position.y = r * Math.cos(cameraState.theta);
@@ -191,10 +191,10 @@ function animate() {
     requestAnimationFrame(animate);
     time += 0.005;
 
-    // 公转:每个 orbit 按各自速度绕系统中心旋转
-    planetInstances.forEach(({ spec, orbit }) => {
-        orbit.rotation.y += spec.orbit.speed;
-    });
+    // 公转:已禁用,Day 6 开启(多星球时再启用)
+    // planetInstances.forEach(({ spec, orbit }) => {
+    //     orbit.rotation.y += spec.orbit.speed;
+    // });
 
     updateCamera();
     composer.render();
