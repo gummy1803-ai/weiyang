@@ -80,7 +80,7 @@ export function createTemplatePlanet() {
     planetGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
 
     const planetMat = new THREE.PointsMaterial({
-        color: 0x33aaff,            // 用 spec.appearance.palette[0],这里写死仅作模板示例
+        color: 0xff6600,            // 恢复原始橙色,用 spec.appearance.palette[0]
         size: 3,
         map: particleTexture,       // 复用共享纹理单例
         transparent: true,
@@ -146,6 +146,6 @@ export const templateSpec = {
     appearance: {
         coreRadius: 50,
         particleBudget: 4000 + 2000,  // 本体 + 星环合计
-        palette: [0x33aaff, 0xffffff] // [主色, 辅色]
+        palette: [0xff6600, 0xffaa00] // [主色橙, 辅色亮橙] 恢复原始色调
     }
 };

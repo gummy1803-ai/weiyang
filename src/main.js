@@ -19,7 +19,7 @@ const CONFIG = {
     defaultDistance: 400,
     minDistance: 150,
     maxDistance: 2000,
-    rotationSpeedMultiplier: 0.05
+    rotationSpeedMultiplier: 0.01  // 再降一档,从 0.02
 };
 
 // ===== 全局 =====
@@ -135,11 +135,11 @@ function updateGroupCamera() {
     }
     // 握拳 → 远离;张开 → 靠近
     if (cameraState.isFist) {
-        cameraState.zoomVelocity += 0.5;
+        cameraState.zoomVelocity += 0.08;  // 再降一档,从 0.15
     } else if (cameraState.isOpen) {
         cameraState.targetRadius = CONFIG.minDistance;
         const diff = cameraState.radius - CONFIG.minDistance;
-        cameraState.zoomVelocity = -diff * 0.05;
+        cameraState.zoomVelocity = -diff * 0.01;  // 再降一档,从 0.02
     } else {
         cameraState.zoomVelocity *= 0.9;
     }
