@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>粒子星球手势控制器</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 用于MediaPipe输入的视频,隐藏 */
+        #input-video {
+            display: none;
+        }
+
+        /* UI 提示层 */
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            color: rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 166, 0, 0.8);
+        }
+
+        .instruction {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 3px solid #ffaa00;
+        }
+
+        .status {
+            margin-top: 5px;
+            font-weight: bold;
+            color: #00ffcc;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            z-index: 20;
+            text-align: center;
+        }
+
+        /* 摄像头预览小窗 */
+        #webcam-preview {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 160px;
+            height: 120px;
+            z-index: 10;
+            border: 2px solid #333;
+            border-radius: 8px;
+            opacity: 0.7;
+            transform: scaleX(-1); /* 镜像翻转 */
+        }
+    </style>
+
+    <!-- 1. MediaPipe 依赖(常规 Script,main.js 通过 window.Hands / window.Camera 使用) -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <!-- 2. Three.js Import Map(main.js 与各星球模块通过 bare import 引用) -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="loading">正在启动神经连接...<br><span style="font-size:14px; opacity:0.7">请允许摄像头权限</span></div>
+
+    <div id="ui-layer">
+        <h1>粒子星云核心</h1>
+        <div class="instruction">
+            👋 <b>旋转手掌</b>: 旋转相机视角<br>
+            ✊ <b>握拳并拉远</b>: 相机远离 (加速)<br>
+            ✋ <b>五指张开靠近</b>: 相机靠近 (减速)<br>
+        </div>
+        <div id="gesture-status" class="status">等待手势...</div>
+    </div>
+
+    <!-- 隐藏的原始视频输入(MediaPipe 用) -->
+    <video id="input-video"></video>
+    <!-- 摄像头预览小窗 -->
+    <canvas id="webcam-preview"></canvas>
+    <!-- 主3D场景挂载点(main.js 在此追加 renderer.domElement) -->
+    <div id="canvas-container"></div>
+
+    <!-- 主入口:装配器 + 星球模块全在此链式 import -->
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>
