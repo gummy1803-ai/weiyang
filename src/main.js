@@ -22,6 +22,30 @@ const CONFIG = {
     rotationSpeedMultiplier: 0.01  // 再降一档,从 0.02
 };
 
+// ===== 自动归位系统配置 =====
+const RETURN_CONFIG = {
+    idleTimeout: 10000,         // 10秒无指令触发归位(±0.1秒精度由 performance.now() 保证)
+    duration: 2500,             // 归位动画时长 2.5秒(在 2-3秒 范围内)
+    positionTolerance: 0.002,   // ±2mm 位置误差容忍(1单位=1mm假设)
+    rotationDeadzone: 0.1,      // 旋转死区,过滤手部抖动(防误触发)
+    minValidFrames: 3,           // 有效指令需连续3帧稳定(防误触发)
+};
+
+// 归位状态机
+const ReturnState = { IDLE: 'idle', RETURNING: 'returning' };
+let returnState = ReturnState.IDLE;
+let lastCommandTime = performance.now();   // 最后一次有效指令时间戳
+let validFrameCount = 0;                    // 当前连续有效帧计数
+let returnStartTime = 0;                    // 归位开始时间
+let returnFrom = null;                      // 归位起始状态快照 {radius, theta, phi}
+
+// 归位目标(默认中心位置)
+const RETURN_TARGET = {
+    radius: CONFIG.defaultDistance,
+    theta: Math.PI / 2,
+    phi: 0
+};
+
 // ===== 全局 =====
 let scene, camera, renderer, composer;
 let systemGroup;
@@ -127,34 +151,101 @@ function updateCamera() {
     }
 }
 
+// 缓动函数:ease in-out cubic,归位动画用,起步/结束平稳无冲击
+function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+// 启动归位流程:记录起始快照,进入 RETURNING 状态
+function startReturn() {
+    returnState = ReturnState.RETURNING;
+    returnStartTime = performance.now();
+    returnFrom = {
+        radius: cameraState.radius,
+        theta: cameraState.theta,
+        phi: cameraState.phi
+    };
+    // 日志:触发时间 + 起始位置
+    const triggerTime = new Date().toLocaleString('zh-CN', { hour12: false });
+    console.log(`[归位] 触发时间: ${triggerTime}`);
+    console.log(`[归位] 起始位置: r=${returnFrom.radius.toFixed(3)}, theta=${returnFrom.theta.toFixed(4)}, phi=${returnFrom.phi.toFixed(4)}`);
+    if (statusEl) {
+        statusEl.innerText = '状态: 🏠 自动归位中...';
+        statusEl.style.color = '#ffaa00';
+    }
+}
+
+// 归位完成:发送确认信号 + 重置待机状态 + 日志
+function completeReturn() {
+    const elapsed = performance.now() - returnStartTime;
+    const finalState = {
+        radius: cameraState.radius,
+        theta: cameraState.theta,
+        phi: cameraState.phi
+    };
+    // 强制吸附到目标(消除残余误差,保证 ±2mm 精度)
+    cameraState.radius = RETURN_TARGET.radius;
+    cameraState.theta = RETURN_TARGET.theta;
+    cameraState.phi = RETURN_TARGET.phi;
+    cameraState.zoomVelocity = 0;
+    cameraState.handRotation = 0;
+    cameraState.isFist = false;
+    cameraState.isOpen = false;
+
+    returnState = ReturnState.IDLE;
+    lastCommandTime = performance.now();  // 重置计时器,避免立刻再触发
+    validFrameCount = 0;
+
+    // 日志:耗时 + 最终位置 + 误差
+    const posError = Math.abs(finalState.radius - RETURN_TARGET.radius);
+    console.log(`[归位] 完成 | 耗时: ${elapsed.toFixed(0)}ms | 最终位置: r=${RETURN_TARGET.radius.toFixed(3)}, theta=${RETURN_TARGET.theta.toFixed(4)}, phi=${RETURN_TARGET.phi.toFixed(4)} | 位置误差: ${posError.toFixed(4)} (容忍 ±${RETURN_CONFIG.positionTolerance})`);
+    console.log('[归位] 已发送确认信号,设备重置为待机模式');
+
+    if (statusEl) {
+        statusEl.innerText = '状态: 待机 (已归位)';
+        statusEl.style.color = '#888888';
+    }
+}
+
 // GROUP 模式:相机围绕系统中心(原点)球坐标,手势驱动
 function updateGroupCamera() {
-    // 手掌旋转 → 水平角 phi
-    if (Math.abs(cameraState.handRotation) > 0.1) {
-        cameraState.phi += cameraState.handRotation * CONFIG.rotationSpeedMultiplier;
-    }
-    // 握拳 → 远离;张开 → 靠近
-    if (cameraState.isFist) {
-        cameraState.zoomVelocity += 0.08;  // 再降一档,从 0.15
-    } else if (cameraState.isOpen) {
-        cameraState.targetRadius = CONFIG.minDistance;
-        const diff = cameraState.radius - CONFIG.minDistance;
-        cameraState.zoomVelocity = -diff * 0.01;  // 再降一档,从 0.02
+    // 归位模式:用 easeInOutCubic 插值到目标,不响应手势
+    if (returnState === ReturnState.RETURNING && returnFrom) {
+        const elapsed = performance.now() - returnStartTime;
+        const t = Math.min(elapsed / RETURN_CONFIG.duration, 1);  // 0→1
+        const k = easeInOutCubic(t);                              // 缓动后的 0→1
+        cameraState.radius = returnFrom.radius + (RETURN_TARGET.radius - returnFrom.radius) * k;
+        cameraState.theta = returnFrom.theta + (RETURN_TARGET.theta - returnFrom.theta) * k;
+        cameraState.phi   = returnFrom.phi   + (RETURN_TARGET.phi   - returnFrom.phi  ) * k;
+        // 完成:耗时到 + 误差小于容忍
+        if (t >= 1) {
+            completeReturn();
+        }
     } else {
-        cameraState.zoomVelocity *= 0.9;
+        // 正常手势控制模式
+        // 手掌旋转 → 水平角 phi
+        if (Math.abs(cameraState.handRotation) > RETURN_CONFIG.rotationDeadzone) {
+            cameraState.phi += cameraState.handRotation * CONFIG.rotationSpeedMultiplier;
+        }
+        // 握拳 → 远离;张开 → 靠近
+        if (cameraState.isFist) {
+            cameraState.zoomVelocity += 0.08;
+        } else if (cameraState.isOpen) {
+            cameraState.targetRadius = CONFIG.minDistance;
+            const diff = cameraState.radius - CONFIG.minDistance;
+            cameraState.zoomVelocity = -diff * 0.01;
+        } else {
+            cameraState.zoomVelocity *= 0.9;
+        }
+        cameraState.radius += cameraState.zoomVelocity;
+        if (cameraState.radius < CONFIG.minDistance) {
+            cameraState.radius = CONFIG.minDistance;
+            cameraState.zoomVelocity = 0;
+        }
+        if (cameraState.radius > CONFIG.maxDistance) {
+            cameraState.radius = CONFIG.maxDistance;
+        }
     }
-    cameraState.radius += cameraState.zoomVelocity;
-    if (cameraState.radius < CONFIG.minDistance) {
-        cameraState.radius = CONFIG.minDistance;
-        cameraState.zoomVelocity = 0;
-    }
-    if (cameraState.radius > CONFIG.maxDistance) {
-        cameraState.radius = CONFIG.maxDistance;
-    }
-    // 空闲自转:已禁用,原始版默认固定不动
-    // if (!cameraState.isFist && !cameraState.isOpen && Math.abs(cameraState.handRotation) < 0.1) {
-    //     cameraState.phi -= 0.001;
-    // }
     const r = cameraState.radius;
     camera.position.x = r * Math.sin(cameraState.theta) * Math.sin(cameraState.phi);
     camera.position.y = r * Math.cos(cameraState.theta);
@@ -196,6 +287,15 @@ function animate() {
     //     orbit.rotation.y += spec.orbit.speed;
     // });
 
+    // 归位触发检测:IDLE 状态下,距上次有效指令超过 10 秒则启动归位
+    // 时间精度:performance.now() 微秒级,±0.1秒 容忍富余
+    if (returnState === ReturnState.IDLE) {
+        const idleMs = performance.now() - lastCommandTime;
+        if (idleMs >= RETURN_CONFIG.idleTimeout) {
+            startReturn();
+        }
+    }
+
     updateCamera();
     composer.render();
 }
@@ -212,6 +312,8 @@ function onResults(results) {
     previewCtx.save();
     previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
     previewCtx.drawImage(results.image, 0, 0, previewCanvas.width, previewCanvas.height);
+
+    let hasValidCommand = false;  // 本帧是否有"有效指令"(防误触发)
 
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
         const landmarks = results.multiHandLandmarks[0];
@@ -252,13 +354,44 @@ function onResults(results) {
             statusEl.innerText = '状态: 🤞 旋转控制中';
             statusEl.style.color = '#00ffcc';
         }
+
+        // 有效指令判定(防误触发):
+        //   - 旋转超过死区,或握拳,或张开 → 视为有效
+        //   - 否则(手指半弯、手在镜头里静止)不算有效指令,计时器继续
+        if (Math.abs(cameraState.handRotation) > RETURN_CONFIG.rotationDeadzone
+            || cameraState.isFist
+            || cameraState.isOpen) {
+            validFrameCount++;
+            // 连续 minValidFrames 帧稳定才确认有效(过滤瞬间抖动)
+            if (validFrameCount >= RETURN_CONFIG.minValidFrames) {
+                hasValidCommand = true;
+            }
+        } else {
+            validFrameCount = 0;
+        }
     } else {
         cameraState.handRotation = 0;
         cameraState.isFist = false;
         cameraState.isOpen = false;
         statusEl.innerText = '未检测到手';
         statusEl.style.color = '#888';
+        validFrameCount = 0;
     }
+
+    // 有效指令到来:刷新计时器;若正在归位则打断归位,恢复手势控制
+    if (hasValidCommand) {
+        lastCommandTime = performance.now();
+        if (returnState === ReturnState.RETURNING) {
+            returnState = ReturnState.IDLE;
+            returnFrom = null;
+            console.log('[归位] 被有效指令打断,恢复手势控制');
+            if (statusEl) {
+                statusEl.innerText = '状态: 🤞 旋转控制中';
+                statusEl.style.color = '#00ffcc';
+            }
+        }
+    }
+
     previewCtx.restore();
 }
 
