@@ -1,0 +1,2251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>粒子星云核心</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Microsoft YaHei', '微软雅黑', 'PingFang SC', 'Source Han Sans CN', sans-serif;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 用于MediaPipe输入的视频，隐藏 */
+        #input-video {
+            display: none;
+        }
+
+        /* UI 提示层 */
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            color: rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            color: #ccbbee;
+            text-shadow: 0 0 15px rgba(130, 80, 255, 1), 0 0 40px rgba(180, 60, 200, 0.6), 0 2px 0 rgba(0, 0, 0, 0.8);
+            font-weight: 900;
+            font-family: '站酷高端黑', 'ZCOOL KuaiLe', 'Microsoft YaHei', '微软雅黑', 'PingFang SC', sans-serif;
+        }
+
+        /* 功能介绍展开面板 */
+        #instructions-panel {
+            position: absolute;
+            top: 65px;
+            left: 20px;
+            z-index: 10;
+            width: 320px;
+            max-width: calc(100vw - 40px);
+        }
+
+        #instructions-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(10, 5, 25, 0.7);
+            border: 1px solid rgba(130, 80, 220, 0.4);
+            border-radius: 10px;
+            padding: 8px 14px;
+            color: rgba(200, 180, 230, 0.8);
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+            user-select: none;
+            backdrop-filter: blur(4px);
+        }
+
+        #instructions-toggle:hover {
+            background: rgba(20, 10, 40, 0.85);
+            border-color: rgba(150, 100, 255, 0.6);
+            color: #cc99ff;
+            box-shadow: 0 0 12px rgba(130, 80, 255, 0.3);
+        }
+
+        #instructions-toggle .toggle-icon {
+            font-size: 1rem;
+            transition: transform 0.3s ease;
+            display: inline-block;
+        }
+
+        #instructions-panel.open #instructions-toggle .toggle-icon {
+            transform: rotate(90deg);
+        }
+
+        #instructions-content {
+            margin-top: 6px;
+            font-size: 0.85rem;
+            background: rgba(10, 5, 25, 0.85);
+            padding: 14px 16px;
+            border-radius: 10px;
+            border-left: 3px solid #8855ff;
+            color: rgba(200, 180, 230, 0.75);
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+            backdrop-filter: blur(6px);
+        }
+
+        #instructions-panel.open #instructions-content {
+            max-height: 500px;
+            opacity: 1;
+            padding: 14px 16px;
+            margin-top: 6px;
+        }
+
+        #instructions-content br:last-child {
+            display: none;
+        }
+
+        .status {
+            margin-top: 5px;
+            font-weight: 600;
+            color: #cc6688;
+            text-shadow: 0 0 8px rgba(200, 80, 120, 0.6);
+        }
+
+        #loading {
+            position: absolute;
+            bottom: 70px;
+            left: 20px;
+            color: white;
+            font-size: 14px;
+            z-index: 20;
+            text-align: left;
+        }
+        
+        /* 摄像头预览小窗 */
+        #webcam-preview {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 160px;
+            height: 120px;
+            z-index: 10;
+            border: 2px solid #333;
+            border-radius: 8px;
+            opacity: 0.7;
+            transform: scaleX(-1); /* 镜像翻转 */
+        }
+
+        /* 背景音乐区域 */
+        #music-area {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 10;
+        }
+
+        #music-toggle {
+            background: rgba(10, 5, 25, 0.7);
+            border: 1px solid #8855ff;
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: #bbaaff;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            text-shadow: 0 0 6px rgba(130, 80, 255, 0.5);
+        }
+
+        #music-toggle:hover {
+            background: rgba(130, 80, 255, 0.2);
+            box-shadow: 0 0 18px rgba(130, 80, 255, 0.6);
+            color: #ddd0ff;
+        }
+
+        #music-toggle .music-icon {
+            font-size: 18px;
+        }
+
+        /* B站播放器（完全隐藏，仅用于音频） */
+        #bilibili-player-wrapper {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            pointer-events: none;
+            left: -9999px;
+        }
+
+        /* 星系形成文字覆盖层（顶部） */
+        #formation-overlay {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.6s ease, top 0.6s ease;
+        }
+
+        #formation-overlay.show {
+            opacity: 1;
+            top: 40px;
+        }
+
+        #formation-overlay .formation-title {
+            font-size: 2rem;
+            color: #cc88ff;
+            text-shadow: 0 0 30px rgba(150, 60, 255, 1), 0 0 80px rgba(200, 40, 120, 0.7), 0 3px 0 rgba(0, 0, 0, 0.9);
+            letter-spacing: 8px;
+            font-weight: 900;
+        }
+
+        #formation-overlay .formation-sub {
+            font-size: 0.95rem;
+            color: rgba(180, 160, 220, 0.65);
+            margin-top: 8px;
+            letter-spacing: 2px;
+        }
+
+        #formation-overlay .formation-stage {
+            font-size: 0.75rem;
+            color: rgba(150, 100, 200, 0.45);
+            margin-top: 6px;
+            letter-spacing: 3px;
+        }
+
+        /* 快进按钮 */
+        #fastforward-btn {
+            position: absolute;
+            top: 100px;
+            right: 30px;
+            z-index: 16;
+            background: rgba(10, 5, 25, 0.7);
+            border: 1px solid rgba(150, 100, 220, 0.6);
+            border-radius: 20px;
+            padding: 8px 18px;
+            color: #bbaaff;
+            font-size: 13px;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            letter-spacing: 1px;
+            text-shadow: 0 0 6px rgba(130, 80, 255, 0.5);
+        }
+
+        #fastforward-btn.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #fastforward-btn:hover {
+            background: rgba(130, 80, 255, 0.25);
+            box-shadow: 0 0 15px rgba(130, 80, 255, 0.5);
+            border-color: #9966ff;
+            color: #ddd0ff;
+        }
+
+        #fastforward-btn.active {
+            background: rgba(200, 60, 120, 0.3);
+            border-color: #cc4477;
+            color: #ffccdd;
+            box-shadow: 0 0 20px rgba(200, 60, 120, 0.6);
+            text-shadow: 0 0 8px rgba(255, 100, 150, 0.6);
+        }
+
+        /* 点击提示 */
+        #click-hint {
+            position: absolute;
+            bottom: 65px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            color: rgba(150, 110, 210, 0.5);
+            font-size: 0.85rem;
+            pointer-events: none;
+            animation: hint-pulse 2.5s ease-in-out infinite;
+            white-space: nowrap;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        #click-hint .hint-sub {
+            font-size: 0.72rem;
+            color: rgba(150, 110, 210, 0.35);
+            margin-top: 6px;
+            letter-spacing: 2px;
+        }
+
+        @keyframes hint-pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.7; }
+        }
+
+        /* 简介面板 */
+        #info-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            z-index: 20;
+            width: min(420px, 85vw);
+            background: rgba(8, 5, 20, 0.94);
+            border: 1px solid rgba(130, 80, 220, 0.4);
+            border-radius: 16px;
+            padding: 28px 32px;
+            color: #ddd;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 0 40px rgba(100, 50, 180, 0.2), 0 20px 60px rgba(0, 0, 0, 0.8);
+        }
+
+        #info-panel.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        #info-panel .info-title {
+            font-size: 1.8rem;
+            color: #cc99ff;
+            margin-bottom: 6px;
+            letter-spacing: 5px;
+            text-shadow: 0 0 25px rgba(150, 60, 255, 0.8), 0 2px 0 rgba(0, 0, 0, 0.8);
+            font-weight: 900;
+        }
+
+        #info-panel .info-subtitle {
+            font-size: 0.85rem;
+            color: rgba(170, 130, 220, 0.6);
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(130, 80, 220, 0.25);
+            letter-spacing: 1px;
+        }
+
+        #info-panel .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 7px 0;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        #info-panel .info-row:last-of-type {
+            border-bottom: none;
+        }
+
+        #info-panel .info-label {
+            color: rgba(180, 160, 210, 0.5);
+        }
+
+        #info-panel .info-value {
+            color: #bb99ee;
+            font-weight: 500;
+        }
+
+        #info-panel .info-desc {
+            margin-top: 16px;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: rgba(200, 180, 230, 0.7);
+            padding-top: 12px;
+            border-top: 1px solid rgba(130, 80, 220, 0.2);
+        }
+
+        #info-panel .info-close {
+            margin-top: 16px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: rgba(150, 110, 200, 0.4);
+            letter-spacing: 1px;
+        }
+
+        /* 黑洞内部覆盖层 */
+        #interior-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 30;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        #interior-overlay.show {
+            opacity: 1;
+        }
+
+        #interior-overlay .interior-title {
+            font-size: 2.2rem;
+            color: #ff3366;
+            letter-spacing: 10px;
+            text-shadow: 0 0 30px rgba(255, 50, 100, 1), 0 0 80px rgba(200, 20, 80, 0.8);
+            font-weight: 900;
+            animation: interior-pulse 2s ease-in-out infinite;
+        }
+
+        #interior-overlay .interior-sub {
+            font-size: 0.9rem;
+            color: rgba(255, 150, 180, 0.6);
+            margin-top: 12px;
+            letter-spacing: 3px;
+        }
+
+        #interior-overlay .interior-hint {
+            font-size: 0.75rem;
+            color: rgba(255, 100, 150, 0.35);
+            margin-top: 20px;
+            letter-spacing: 2px;
+        }
+
+        @keyframes interior-pulse {
+            0%, 100% { text-shadow: 0 0 30px rgba(255, 50, 100, 1), 0 0 80px rgba(200, 20, 80, 0.8); }
+            50% { text-shadow: 0 0 50px rgba(255, 80, 120, 1), 0 0 120px rgba(255, 30, 100, 1); }
+        }
+
+        /* 内部简介面板 */
+        #interior-info-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            z-index: 35;
+            width: min(440px, 85vw);
+            background: rgba(15, 5, 15, 0.96);
+            border: 1px solid rgba(255, 50, 100, 0.5);
+            border-radius: 16px;
+            padding: 28px 32px;
+            color: #ddd;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 0 50px rgba(255, 30, 80, 0.3), 0 20px 60px rgba(0, 0, 0, 0.9);
+        }
+
+        #interior-info-panel.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+
+        #interior-info-panel .info-title {
+            font-size: 1.8rem;
+            color: #ff4477;
+            margin-bottom: 6px;
+            letter-spacing: 5px;
+            text-shadow: 0 0 25px rgba(255, 50, 100, 0.9), 0 2px 0 rgba(0, 0, 0, 0.8);
+            font-weight: 900;
+        }
+
+        #interior-info-panel .info-subtitle {
+            font-size: 0.85rem;
+            color: rgba(255, 120, 150, 0.6);
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 50, 100, 0.25);
+            letter-spacing: 1px;
+        }
+
+        #interior-info-panel .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 7px 0;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        #interior-info-panel .info-row:last-of-type {
+            border-bottom: none;
+        }
+
+        #interior-info-panel .info-label {
+            color: rgba(200, 150, 170, 0.5);
+        }
+
+        #interior-info-panel .info-value {
+            color: #ff88aa;
+            font-weight: 500;
+        }
+
+        #interior-info-panel .info-desc {
+            margin-top: 16px;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            color: rgba(220, 180, 200, 0.7);
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 50, 100, 0.2);
+        }
+
+        #interior-info-panel .info-close {
+            margin-top: 16px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: rgba(255, 100, 140, 0.4);
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+    </style>
+
+    <!-- 1. MediaPipe 依赖 (常规 Script 方式) -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <!-- 2. Three.js Import Map for Modules -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <div id="loading">正在启动神经连接...<br><span style="font-size:14px; opacity:0.7">请允许摄像头权限</span></div>
+
+    <div id="ui-layer">
+        <h1>粒子星云核心</h1>
+        <div id="instructions-panel">
+            <div id="instructions-toggle">
+                <span class="toggle-icon">▶</span> 功能介绍
+            </div>
+            <div id="instructions-content">
+                ① <b>旋转手掌</b>: 水平/垂直旋转视角<br>
+                ② <b>握拳/张开</b>: 远离 / 靠近<br>
+                ③ <b>拖拽/滚轮</b>: 旋转 / 缩放<br>
+                ④ <b>点击黑洞3次</b>: 星系形成过程（缩小观看更佳）<br>
+                ⑤ <b>长按黑洞中心</b>: 查看卡冈图雅简介<br>
+                ⑥ <b>按键4</b>: 进入黑洞内部<br>
+                &nbsp;&nbsp;&nbsp;🤏 <b>长按</b>: 查看奇点简介<br>
+                ⑦ <b>按键1/2</b>: 亮度降低 / 升高<br>
+                ⑧ <b>按键3</b>: 退出内部
+            </div>
+        </div>
+        <div id="gesture-status" class="status">等待手势...</div>
+    </div>
+
+    <!-- 星系形成文字覆盖层（顶部） -->
+    <div id="formation-overlay">
+        <div class="formation-title"></div>
+        <div class="formation-sub"></div>
+        <div class="formation-stage"></div>
+    </div>
+
+    <!-- 快进按钮 -->
+    <button id="fastforward-btn">⏩ 快进 2x</button>
+
+    <!-- 简介面板 -->
+    <div id="info-panel">
+        <div class="info-title">GARGANTUA</div>
+        <div class="info-subtitle">卡冈图雅 · 超大质量旋转黑洞</div>
+        <div class="info-row"><span class="info-label">类型</span><span class="info-value">克尔黑洞（旋转）</span></div>
+        <div class="info-row"><span class="info-label">质量</span><span class="info-value">~1亿倍太阳质量</span></div>
+        <div class="info-row"><span class="info-label">事件视界半径</span><span class="info-value">约 3 AU</span></div>
+        <div class="info-row"><span class="info-label">吸积盘温度</span><span class="info-value">内缘 6000℃+</span></div>
+        <div class="info-row"><span class="info-label">自转速率</span><span class="info-value">接近光速的 99.8%</span></div>
+        <div class="info-desc">
+            卡冈图雅是电影《星际穿越》中的核心天体，一颗正在吞噬周围物质的超大质量旋转黑洞。
+            其强大的引力使周围时空发生剧烈扭曲，产生了壮观的吸积盘与引力透镜效应。
+            靠近事件视界的区域，时间流逝将显著变慢。
+        </div>
+        <div class="info-close">点击任意处关闭</div>
+    </div>
+
+    <!-- 黑洞内部覆盖层 -->
+    <div id="interior-overlay">
+        <div class="interior-title">奇点</div>
+        <div class="interior-sub">时空在此终结</div>
+        <div class="interior-hint">按 3 退出 &nbsp;|&nbsp; 长按中心查看简介</div>
+    </div>
+
+    <!-- 内部简介面板 -->
+    <div id="interior-info-panel">
+        <div class="info-title">奇点核心</div>
+        <div class="info-subtitle">黑洞内部 · 时空的尽头</div>
+        <div class="info-row"><span class="info-label">中心区域</span><span class="info-value">引力奇点</span></div>
+        <div class="info-row"><span class="info-label">时空曲率</span><span class="info-value">无限大</span></div>
+        <div class="info-row"><span class="info-label">密度</span><span class="info-value">趋于无穷</span></div>
+        <div class="info-row"><span class="info-label">已知物理定律</span><span class="info-value">不再适用</span></div>
+        <div class="info-row"><span class="info-label">时间方向</span><span class="info-value">指向奇点</span></div>
+        <div class="info-desc">
+            越过事件视界后，时空结构发生根本性反转。时间与空间的角色互换，所有路径都不可逆转地指向中心奇点。
+            在奇点处，已知的物理定律完全崩溃，需要量子引力理论才能描述。
+            卡冈图雅作为高速旋转的克尔黑洞，其内部可能存在一个环状奇点，理论上甚至可能通往其他宇宙。
+        </div>
+        <div class="info-close" onclick="hideInteriorInfoPanel()">点击任意处关闭</div>
+    </div>
+
+
+    <!-- 隐藏的原始视频输入 -->
+    <video id="input-video"></video>
+    <!-- 用于反馈的小画布 -->
+    <canvas id="webcam-preview"></canvas>
+    <!-- 主3D场景 -->
+    <div id="canvas-container"></div>
+
+    <!-- 背景音乐区域 -->
+    <div id="music-area">
+        <button id="music-toggle">
+            <span class="music-icon">🎵</span>
+            <span id="music-label">播放音乐</span>
+        </button>
+        <div id="bilibili-player-wrapper">
+            <iframe src="about:blank" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true">
+            </iframe>
+        </div>
+    </div>
+
+    <script>
+        // 背景音乐 - B站隐藏播放
+        const BILI_URL = 'https://player.bilibili.com/player.html?bvid=BV1Mb4y1N7EG&page=1&high_quality=1&danmaku=0&autoplay=1&t=35';
+        let musicPlaying = false;
+        const iframe = document.querySelector('#bilibili-player-wrapper iframe');
+
+        document.getElementById('music-toggle').addEventListener('click', function() {
+            const label = document.getElementById('music-label');
+            const icon = document.querySelector('#music-toggle .music-icon');
+            const btn = document.getElementById('music-toggle');
+
+            if (musicPlaying) {
+                iframe.src = 'about:blank';
+                musicPlaying = false;
+                label.textContent = '播放音乐';
+                icon.textContent = '🎵';
+                btn.style.borderColor = '#ffaa00';
+                btn.style.color = '#ffaa00';
+                btn.style.boxShadow = '';
+            } else {
+                iframe.src = BILI_URL;
+                musicPlaying = true;
+                label.textContent = '暂停音乐';
+                icon.textContent = '🎶';
+                btn.style.borderColor = '#9966ff';
+                btn.style.color = '#ccbbee';
+                btn.style.boxShadow = '0 0 15px rgba(130, 80, 255, 0.5)';
+            }
+        });
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+        // ==========================================
+        // 1. 全局变量与配置
+        // ==========================================
+        const CONFIG = {
+            blackHoleRadius: 30,
+            diskInnerRadius: 35,
+            diskOuterRadius: 100,
+            diskParticleCount: 12000,
+            minDistance: 150,
+            maxDistance: 800,
+            defaultDistance: 280,
+            rotationSpeedMultiplier: 0.05
+        };
+
+        let scene, camera, renderer, composer;
+        let bloomPass;
+        let blackHole, accretionDisk, lensingRing, photonRing;
+        let orbitalTrails = [];
+        let starfield;
+        let time = 0;
+
+        // 星系形成状态
+        let formationActive = false;
+        let formationStartTime = 0;
+        let formationElapsed = 0;
+        let formationSpeed = 1.0;
+        let formationCloud = null;
+        let formationCloudData = null;
+        let flashSphere = null;
+        let bloomStrengthBoost = 0;
+        let clickCount = 0;
+        let lastClickTime = 0;
+        let raycaster, mouse;
+        let clickTarget;
+        let formationOrigOpacities = {};
+        let lastFrameTime = 0;
+
+        // 黑洞内部状态
+        let interiorActive = false;
+        let interiorTransition = 0; // 0-1: 进入动画
+        let interiorExiting = false;
+        let keyBuffer = '';
+        let keyLastTime = 0;
+        let interiorParticles = null;
+        let interiorRings = [];
+        let interiorSingularity = null;
+        let savedCameraPos = null;
+        let savedBloomStrength = 0;
+
+        // 亮度调节
+        let brightnessLevel = 0; // -5 到 5
+        const brightnessSteps = [
+            { bloom: 0.8, label: '很暗' },
+            { bloom: 1.4, label: '较暗' },
+            { bloom: 2.0, label: '略暗' },
+            { bloom: 2.5, label: '正常' },
+            { bloom: 3.2, label: '略亮' },
+            { bloom: 4.0, label: '较亮' },
+            { bloom: 5.5, label: '很亮' },
+            { bloom: 7.5, label: '极亮' },
+            { bloom: 10, label: '耀斑' },
+            { bloom: 14, label: '爆闪' },
+            { bloom: 20, label: '失明' }
+        ];
+
+        // 相机控制状态
+        const cameraState = {
+            radius: CONFIG.defaultDistance,
+            theta: Math.PI / 2, // 垂直角度
+            phi: 0,             // 水平角度
+            zoomVelocity: 0,    // 缩放速度
+            targetRadius: CONFIG.defaultDistance,
+            isFist: false,
+            isOpen: false,
+            handRotation: 0,    // 手掌水平旋转量
+            handPitch: 0        // 手掌垂直旋转量
+        };
+
+        // 鼠标/触摸拖拽控制
+        let isDragging = false;
+        let prevPointerX = 0, prevPointerY = 0;
+
+        const statusEl = document.getElementById('gesture-status');
+        const loadingEl = document.getElementById('loading');
+
+        // ==========================================
+        // 2. Three.js 初始化与场景构建
+        // ==========================================
+        
+        function initThree() {
+            const container = document.getElementById('canvas-container');
+
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x000000, 0.0005);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 2000);
+            camera.position.set(0, 0, CONFIG.defaultDistance);
+
+            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // 后期处理 (Bloom 发光)
+            const renderScene = new RenderPass(scene, camera);
+            bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass.threshold = 0;
+            bloomPass.strength = 2.5;
+            bloomPass.radius = 0.6;
+
+            composer = new EffectComposer(renderer);
+            composer.addPass(renderScene);
+            composer.addPass(bloomPass);
+
+            const particleTexture = createParticleTexture();
+
+            // 中心点光源（吸积盘发光）
+            const light = new THREE.PointLight(0xffaa44, 3, 2000);
+            scene.add(light);
+            const ambient = new THREE.AmbientLight(0x332211, 0.3);
+            scene.add(ambient);
+
+            // --- 黑洞（事件视界） ---
+            blackHole = new THREE.Mesh(
+                new THREE.SphereGeometry(CONFIG.blackHoleRadius, 64, 64),
+                new THREE.MeshBasicMaterial({ color: 0x000000 })
+            );
+            scene.add(blackHole);
+
+            // 黑洞边缘亮环
+            const edgeRing = new THREE.Mesh(
+                new THREE.SphereGeometry(CONFIG.blackHoleRadius * 1.02, 64, 64),
+                new THREE.MeshBasicMaterial({
+                    color: 0xffeeaa,
+                    transparent: true,
+                    opacity: 0.35,
+                    side: THREE.BackSide,
+                    blending: THREE.AdditiveBlending
+                })
+            );
+            scene.add(edgeRing);
+
+            // 光子球辉光
+            photonRing = new THREE.Mesh(
+                new THREE.SphereGeometry(CONFIG.blackHoleRadius * 1.08, 64, 64),
+                new THREE.MeshBasicMaterial({
+                    color: 0xffcc66,
+                    transparent: true,
+                    opacity: 0.2,
+                    side: THREE.BackSide,
+                    blending: THREE.AdditiveBlending
+                })
+            );
+            scene.add(photonRing);
+
+            // --- 点击检测目标（不可见但可射线检测，比黑洞略大方便点击） ---
+            clickTarget = new THREE.Mesh(
+                new THREE.SphereGeometry(CONFIG.blackHoleRadius * 2.5, 32, 32),
+                new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false })
+            );
+            scene.add(clickTarget);
+
+            // 射线检测器
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            renderer.domElement.addEventListener('click', onCanvasClick);
+
+            // --- 吸积盘（水平方向粒子盘） ---
+            accretionDisk = createAccretionDisk(particleTexture);
+            scene.add(accretionDisk);
+
+            // --- 引力透镜环（垂直方向，模拟光线弯曲） ---
+            lensingRing = createLensingRing(particleTexture);
+            scene.add(lensingRing);
+
+            // --- 粒子轨道带 ---
+            createOrbitalTrails(particleTexture);
+
+            // --- 星空背景 ---
+            starfield = createStarfield();
+            scene.add(starfield);
+
+            // 鼠标拖拽旋转（水平+垂直）
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                prevPointerX = e.clientX;
+                prevPointerY = e.clientY;
+                onCanvasMouseDown(e);
+            });
+            window.addEventListener('mousemove', (e) => {
+                onCanvasMouseMove(e);
+                if (!isDragging) return;
+                const dx = e.clientX - prevPointerX;
+                const dy = e.clientY - prevPointerY;
+                cameraState.phi += dx * 0.006;
+                cameraState.theta -= dy * 0.006;
+                cameraState.theta = Math.max(0.15, Math.min(Math.PI - 0.15, cameraState.theta));
+                prevPointerX = e.clientX;
+                prevPointerY = e.clientY;
+            });
+            window.addEventListener('mouseup', () => { isDragging = false; onCanvasMouseUp(); });
+
+            // 滚轮缩放
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                cameraState.radius += e.deltaY * 0.6;
+                cameraState.radius = Math.max(CONFIG.minDistance, Math.min(CONFIG.maxDistance, cameraState.radius));
+            }, { passive: false });
+
+            // 触摸拖拽旋转
+            renderer.domElement.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    prevPointerX = e.touches[0].clientX;
+                    prevPointerY = e.touches[0].clientY;
+                    // 触摸长按
+                    if (!formationActive && !infoPanelShowing) {
+                        const touch = e.touches[0];
+                        mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+                        mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+                        raycaster.setFromCamera(mouse, camera);
+                        const intersects = raycaster.intersectObject(clickTarget);
+                        if (intersects.length > 0) {
+                            longPressTriggered = false;
+                            longPressStartX = touch.clientX;
+                            longPressStartY = touch.clientY;
+                            longPressTimer = setTimeout(() => {
+                                longPressTriggered = true;
+                                showInfoPanel();
+                            }, 650);
+                        }
+                    }
+                }
+            }, { passive: true });
+            renderer.domElement.addEventListener('touchmove', (e) => {
+                // 触摸移动取消长按
+                if (longPressTimer && e.touches.length === 1) {
+                    const dx = Math.abs(e.touches[0].clientX - longPressStartX);
+                    const dy = Math.abs(e.touches[0].clientY - longPressStartY);
+                    if (dx > 10 || dy > 10) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
+                }
+                if (!isDragging || e.touches.length !== 1) return;
+                e.preventDefault();
+                const dx = e.touches[0].clientX - prevPointerX;
+                const dy = e.touches[0].clientY - prevPointerY;
+                cameraState.phi += dx * 0.006;
+                cameraState.theta -= dy * 0.006;
+                cameraState.theta = Math.max(0.15, Math.min(Math.PI - 0.15, cameraState.theta));
+                prevPointerX = e.touches[0].clientX;
+                prevPointerY = e.touches[0].clientY;
+            }, { passive: false });
+            renderer.domElement.addEventListener('touchend', () => { isDragging = false; onCanvasMouseUp(); }, { passive: true });
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        // ==========================================
+        // 粒子轨道带系统
+        // ==========================================
+        function createOrbitalTrails(texture) {
+            const trailConfigs = [
+                { count: 4000, baseR: 125, spread: 18, speed: 1.2,  inclination: 0.08,  eccentricity: 0.35, argPeri: 0.0,  color: 0xddccaa, size: 2.0, opacity: 0.7 },
+                { count: 5500, baseR: 250, spread: 25, speed: 0.6,  inclination: -0.15, eccentricity: 0.50, argPeri: 0.9,  color: 0xccbbaa, size: 2.0, opacity: 0.7 },
+                { count: 4500, baseR: 300, spread: 20, speed: 0.45, inclination: 0.06,  eccentricity: 0.28, argPeri: 1.8,  color: 0xbbaa99, size: 2.0, opacity: 0.65 },
+                { count: 6500, baseR: 415, spread: 30, speed: 0.22, inclination: -0.25, eccentricity: 0.55, argPeri: 2.6,  color: 0xaa9988, size: 2.5, opacity: 0.7 },
+                { count: 5000, baseR: 620, spread: 38, speed: 0.11, inclination: 0.45,  eccentricity: 0.60, argPeri: 3.4,  color: 0x998877, size: 3.0, opacity: 0.6 },
+                { count: 3500, baseR: 820, spread: 60, speed: 0.05, inclination: -0.55, eccentricity: 0.65, argPeri: 4.5,  color: 0x887766, size: 3.0, opacity: 0.5 },
+            ];
+
+            trailConfigs.forEach(config => {
+                const geo = new THREE.BufferGeometry();
+                const positions = new Float32Array(config.count * 3);
+                const colors = new Float32Array(config.count * 3);
+                const params = [];
+
+                const baseColor = new THREE.Color(config.color);
+
+                for (let i = 0; i < config.count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const r = config.baseR + (Math.random() - 0.5) * config.spread * 2;
+                    const inc = config.inclination + (Math.random() - 0.5) * 0.06;
+                    const e = Math.max(0.05, Math.min(0.85, config.eccentricity + (Math.random() - 0.5) * 0.06));
+                    const argPeri = config.argPeri + (Math.random() - 0.5) * 0.15;
+                    const yOff = (Math.random() - 0.5) * 4;
+                    const spd = config.speed * (0.85 + Math.random() * 0.3);
+
+                    const a = r;
+                    const b = r * Math.sqrt(1 - e * e);
+                    const cOff = r * e;
+                    const cosArg = Math.cos(argPeri);
+                    const sinArg = Math.sin(argPeri);
+
+                    params.push({ angle, a, b, cOff, cosArg, sinArg, inc, yOff, speed: spd });
+
+                    const u = a * Math.cos(angle) - cOff;
+                    const v = b * Math.sin(angle);
+                    const uR = u * cosArg - v * sinArg;
+                    const vR = u * sinArg + v * cosArg;
+
+                    positions[i * 3]     = uR;
+                    positions[i * 3 + 1] = vR * Math.sin(inc) + yOff;
+                    positions[i * 3 + 2] = vR * Math.cos(inc);
+
+                    const c = baseColor.clone();
+                    c.multiplyScalar(0.6 + Math.random() * 0.4);
+                    colors[i * 3]     = c.r;
+                    colors[i * 3 + 1] = c.g;
+                    colors[i * 3 + 2] = c.b;
+                }
+
+                geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+                const mat = new THREE.PointsMaterial({
+                    size: config.size,
+                    map: texture,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: config.opacity,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false,
+                    sizeAttenuation: true
+                });
+
+                const points = new THREE.Points(geo, mat);
+                scene.add(points);
+
+                // 椭圆轨道引导线
+                const orbitGeo = new THREE.BufferGeometry();
+                const orbitPts = [];
+                const segs = 300;
+                const eCfg = config.eccentricity;
+                const aCfg = config.baseR;
+                const bCfg = aCfg * Math.sqrt(1 - eCfg * eCfg);
+                const cCfg = aCfg * eCfg;
+                const cosArgCfg = Math.cos(config.argPeri);
+                const sinArgCfg = Math.sin(config.argPeri);
+                for (let i = 0; i <= segs; i++) {
+                    const a = (i / segs) * Math.PI * 2;
+                    const u = aCfg * Math.cos(a) - cCfg;
+                    const v = bCfg * Math.sin(a);
+                    const uR = u * cosArgCfg - v * sinArgCfg;
+                    const vR = u * sinArgCfg + v * cosArgCfg;
+                    orbitPts.push(
+                        uR,
+                        vR * Math.sin(config.inclination),
+                        vR * Math.cos(config.inclination)
+                    );
+                }
+                orbitGeo.setAttribute('position', new THREE.Float32BufferAttribute(orbitPts, 3));
+                const orbitLine = new THREE.Line(orbitGeo, new THREE.LineBasicMaterial({
+                    color: config.color, transparent: true, opacity: 0.12
+                }));
+                scene.add(orbitLine);
+
+                orbitalTrails.push({ mesh: points, params, positions, orbitLine });
+            });
+        }
+
+        function updateOrbitalTrails() {
+            orbitalTrails.forEach(trail => {
+                const pos = trail.positions;
+                const params = trail.params;
+
+                for (let i = 0; i < params.length; i++) {
+                    const p = params[i];
+                    p.angle += p.speed * 0.002;
+
+                    const u = p.a * Math.cos(p.angle) - p.cOff;
+                    const v = p.b * Math.sin(p.angle);
+                    const uR = u * p.cosArg - v * p.sinArg;
+                    const vR = u * p.sinArg + v * p.cosArg;
+
+                    pos[i * 3]     = uR;
+                    pos[i * 3 + 1] = vR * Math.sin(p.inc) + p.yOff;
+                    pos[i * 3 + 2] = vR * Math.cos(p.inc);
+                }
+
+                trail.mesh.geometry.attributes.position.needsUpdate = true;
+            });
+        }
+
+        function createAccretionDisk(texture) {
+            const geo = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            const innerR = CONFIG.diskInnerRadius;
+            const outerR = CONFIG.diskOuterRadius;
+
+            for (let i = 0; i < CONFIG.diskParticleCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = THREE.MathUtils.lerp(innerR, outerR, Math.pow(Math.random(), 0.5));
+                const thickness = (Math.random() - 0.5) * 3;
+
+                positions.push(r * Math.cos(angle), thickness, r * Math.sin(angle));
+
+                const t = (r - innerR) / (outerR - innerR);
+                colors.push(1.0 - t * 0.3, 0.9 - t * 0.6, 0.7 - t * 0.65);
+            }
+
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+            return new THREE.Points(geo, new THREE.PointsMaterial({
+                size: 3, map: texture, vertexColors: true, transparent: true,
+                opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false
+            }));
+        }
+
+        function createLensingRing(texture) {
+            const geo = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            const innerR = CONFIG.diskInnerRadius * 1.1;
+            const outerR = CONFIG.diskOuterRadius * 0.9;
+            const count = Math.floor(CONFIG.diskParticleCount * 0.35);
+
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const r = THREE.MathUtils.lerp(innerR, outerR, Math.pow(Math.random(), 0.8));
+
+                positions.push(r * Math.cos(angle), r * Math.sin(angle), (Math.random() - 0.5) * 2);
+
+                const t = (r - innerR) / (outerR - innerR);
+                colors.push(1.0 - t * 0.3, 0.85 - t * 0.6, 0.6 - t * 0.55);
+            }
+
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+            return new THREE.Points(geo, new THREE.PointsMaterial({
+                size: 3, map: texture, vertexColors: true, transparent: true,
+                opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false
+            }));
+        }
+
+        function createStarfield() {
+            const geo = new THREE.BufferGeometry();
+            const positions = [];
+            const count = 3000;
+
+            for (let i = 0; i < count; i++) {
+                const r = 800 + Math.random() * 1500;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                positions.push(
+                    r * Math.sin(phi) * Math.cos(theta),
+                    r * Math.sin(phi) * Math.sin(theta),
+                    r * Math.cos(phi)
+                );
+            }
+
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            return new THREE.Points(geo, new THREE.PointsMaterial({
+                color: 0xffffff, size: 1.5, transparent: true,
+                opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false
+            }));
+        }
+
+        // 辅助函数：生成圆形渐变Canvas纹理
+        function createParticleTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            const context = canvas.getContext('2d');
+            const gradient = context.createRadialGradient(16, 16, 0, 16, 16, 16);
+            gradient.addColorStop(0, 'rgba(255,255,255,1)');
+            gradient.addColorStop(0.2, 'rgba(255,255,255,0.8)');
+            gradient.addColorStop(0.5, 'rgba(255,255,255,0.2)');
+            gradient.addColorStop(1, 'rgba(0,0,0,0)');
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 32, 32);
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // ==========================================
+        // 3. 动画与逻辑更新
+        // ==========================================
+
+        function updateCamera() {
+            // 1. 处理水平旋转 (根据手势)
+            if (Math.abs(cameraState.handRotation) > 0.1) {
+                cameraState.phi += cameraState.handRotation * CONFIG.rotationSpeedMultiplier;
+            }
+
+            // 2. 处理垂直旋转 (根据手势上下)
+            if (Math.abs(cameraState.handPitch) > 0.1) {
+                cameraState.theta += cameraState.handPitch * CONFIG.rotationSpeedMultiplier;
+                cameraState.theta = Math.max(0.15, Math.min(Math.PI - 0.15, cameraState.theta));
+            }
+
+            // 3. 处理缩放 (握拳 vs 张开)
+            if (cameraState.isFist) {
+                cameraState.zoomVelocity += 0.5; 
+            } else if (cameraState.isOpen) {
+                cameraState.targetRadius = CONFIG.minDistance;
+                const diff = cameraState.radius - CONFIG.minDistance;
+                cameraState.zoomVelocity = -diff * 0.05;
+            } else {
+                cameraState.zoomVelocity *= 0.9;
+            }
+
+            cameraState.radius += cameraState.zoomVelocity;
+
+            if (cameraState.radius < CONFIG.minDistance) {
+                cameraState.radius = CONFIG.minDistance;
+                cameraState.zoomVelocity = 0;
+            }
+            if (cameraState.radius > CONFIG.maxDistance) {
+                 cameraState.radius = CONFIG.maxDistance;
+            }
+
+            // 自然旋转
+            if (!cameraState.isFist && !cameraState.isOpen && Math.abs(cameraState.handRotation) < 0.1) {
+               cameraState.phi -= 0.0003;
+            }
+
+            camera.position.x = cameraState.radius * Math.sin(cameraState.theta) * Math.sin(cameraState.phi);
+            camera.position.y = cameraState.radius * Math.cos(cameraState.theta);
+            camera.position.z = cameraState.radius * Math.sin(cameraState.theta) * Math.cos(cameraState.phi);
+
+            camera.lookAt(0, 0, 0);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const now = performance.now();
+            const dt = lastFrameTime ? (now - lastFrameTime) / 1000 : 0.016;
+            lastFrameTime = now;
+
+            time += 0.002;
+
+            if (formationActive) {
+                formationElapsed += dt * formationSpeed;
+                updateFormation();
+            } else {
+                // 吸积盘旋转
+                if (accretionDisk) accretionDisk.rotation.y += 0.001;
+
+                // 引力透镜环旋转
+                if (lensingRing) lensingRing.rotation.z += 0.0005;
+
+                // 粒子轨道带运动
+                updateOrbitalTrails();
+
+                // 星空缓慢旋转
+                if (starfield) starfield.rotation.y += 0.0002;
+
+                // 光子球脉动效果
+                if (photonRing) {
+                    const pulse = 1 + Math.sin(time * 2) * 0.02;
+                    photonRing.scale.set(pulse, pulse, pulse);
+                }
+            }
+
+            // Bloom 强度（形成闪光时增强）+ 亮度调节
+            if (bloomPass) {
+                const baseBloom = brightnessSteps[brightnessLevel + 3].bloom;
+                bloomPass.strength = baseBloom + bloomStrengthBoost * 4;
+            }
+
+            // 黑洞内部模式更新
+            if (interiorActive) {
+                updateInterior(dt);
+            }
+
+            updateCamera();
+
+            composer.render();
+        }
+
+        // ==========================================
+        // 星系形成系统
+        // ==========================================
+
+        function onCanvasClick(event) {
+            if (formationActive) return;
+            if (longPressTriggered) {
+                longPressTriggered = false;
+                return;
+            }
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(clickTarget);
+
+            if (intersects.length > 0) {
+                const now = Date.now();
+                if (now - lastClickTime > 2500) {
+                    clickCount = 0;
+                }
+                clickCount++;
+                lastClickTime = now;
+
+                if (clickCount === 1) {
+                    statusEl.innerText = "黑洞点击 1/3";
+                    statusEl.style.color = "#aa77dd";
+                } else if (clickCount === 2) {
+                    statusEl.innerText = "黑洞点击 2/3";
+                    statusEl.style.color = "#aa77dd";
+                } else if (clickCount >= 3) {
+                    clickCount = 0;
+                    startFormation();
+                }
+            }
+        }
+
+        let longPressTimer = null;
+        let longPressTriggered = false;
+        let longPressStartX = 0, longPressStartY = 0;
+
+        function onCanvasMouseDown(event) {
+            if (formationActive) return;
+            if (infoPanelShowing) return;
+            if (interiorInfoPanelShowing) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // 内部模式：长按显示内部简介（点击任意位置即可）
+            if (interiorActive && interiorTransition >= 0.8) {
+                longPressTriggered = false;
+                longPressStartX = event.clientX;
+                longPressStartY = event.clientY;
+
+                longPressTimer = setTimeout(() => {
+                    longPressTriggered = true;
+                    showInteriorInfoPanel();
+                }, 650);
+                return;
+            }
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObject(clickTarget);
+
+            if (intersects.length > 0) {
+                longPressTriggered = false;
+                longPressStartX = event.clientX;
+                longPressStartY = event.clientY;
+
+                longPressTimer = setTimeout(() => {
+                    longPressTriggered = true;
+                    showInfoPanel();
+                }, 650);
+            }
+        }
+
+        function onCanvasMouseMove(event) {
+            if (longPressTimer) {
+                const dx = Math.abs(event.clientX - longPressStartX);
+                const dy = Math.abs(event.clientY - longPressStartY);
+                if (dx > 10 || dy > 10) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+            }
+        }
+
+        function onCanvasMouseUp() {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
+        }
+
+        let infoPanelShowing = false;
+
+        function showInfoPanel() {
+            infoPanelShowing = true;
+            const panel = document.getElementById('info-panel');
+            panel.classList.add('show');
+            clickCount = 0;
+            statusEl.innerText = "卡冈图雅简介";
+            statusEl.style.color = "#cc99ff";
+        }
+
+        function hideInfoPanel() {
+            infoPanelShowing = false;
+            const panel = document.getElementById('info-panel');
+            panel.classList.remove('show');
+        }
+
+        let interiorInfoPanelShowing = false;
+
+        function showInteriorInfoPanel() {
+            interiorInfoPanelShowing = true;
+            const panel = document.getElementById('interior-info-panel');
+            panel.classList.add('show');
+        }
+
+        function hideInteriorInfoPanel() {
+            interiorInfoPanelShowing = false;
+            const panel = document.getElementById('interior-info-panel');
+            panel.classList.remove('show');
+        }
+
+        // 点击简介面板外关闭
+        document.addEventListener('click', (e) => {
+            if (infoPanelShowing) {
+                const panel = document.getElementById('info-panel');
+                if (!panel.contains(e.target)) {
+                    hideInfoPanel();
+                }
+            }
+            if (interiorInfoPanelShowing) {
+                const panel = document.getElementById('interior-info-panel');
+                if (!panel.contains(e.target)) {
+                    hideInteriorInfoPanel();
+                }
+            }
+        });
+
+        function showFormationText(title, sub, stage) {
+            const overlay = document.getElementById('formation-overlay');
+            overlay.querySelector('.formation-title').textContent = title;
+            overlay.querySelector('.formation-sub').textContent = sub || '';
+            overlay.querySelector('.formation-stage').textContent = stage || '';
+            overlay.classList.add('show');
+        }
+
+        function hideFormationText() {
+            document.getElementById('formation-overlay').classList.remove('show');
+        }
+
+        function hideClickHint() {}
+        function showClickHint() {}
+
+        function createFormationCloud(texture) {
+            const count = 8000;
+            const geo = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+            const params = [];
+
+            for (let i = 0; i < count; i++) {
+                const startR = 300 + Math.random() * 500;
+                const startAngle = Math.random() * Math.PI * 2;
+                const startY = (Math.random() - 0.5) * 400;
+                const targetR = 35 + Math.random() * 50;
+                const swirlSpeed = 0.005 + Math.random() * 0.012;
+                const delay = Math.random() * 0.25;
+
+                params.push({ startR, startAngle, startY, targetR, currentAngle: startAngle, swirlSpeed, delay });
+
+                positions[i * 3] = startR * Math.cos(startAngle);
+                positions[i * 3 + 1] = startY;
+                positions[i * 3 + 2] = startR * Math.sin(startAngle);
+
+                const b = 0.7 + Math.random() * 0.3;
+                colors[i * 3] = 1.0 * b;
+                colors[i * 3 + 1] = (0.6 + Math.random() * 0.3) * b;
+                colors[i * 3 + 2] = (0.2 + Math.random() * 0.2) * b;
+            }
+
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const mat = new THREE.PointsMaterial({
+                size: 4, map: texture, vertexColors: true,
+                transparent: true, opacity: 0,
+                blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true
+            });
+
+            const mesh = new THREE.Points(geo, mat);
+            return { mesh, params, positions };
+        }
+
+        function startFormation() {
+            formationActive = true;
+            formationElapsed = 0;
+            formationSpeed = 1.0;
+            bloomStrengthBoost = 0;
+
+            // 存储原始透明度
+            formationOrigOpacities = {
+                disk: accretionDisk.material.opacity,
+                lens: lensingRing.material.opacity,
+                star: starfield.material.opacity,
+                photon: photonRing.material.opacity,
+                trails: orbitalTrails.map(t => t.mesh.material.opacity),
+                orbitLines: orbitalTrails.map(t => t.orbitLine.material.opacity)
+            };
+
+            // 创建坍缩粒子云
+            const tex = createParticleTexture();
+            const cloud = createFormationCloud(tex);
+            formationCloud = cloud.mesh;
+            formationCloudData = cloud;
+            scene.add(formationCloud);
+
+            hideClickHint();
+            showFastForwardBtn();
+            showFormationText("星系重置", "原有结构逐渐消散...", "阶段 1/9");
+        }
+
+        function toggleFastForward() {
+            const btn = document.getElementById('fastforward-btn');
+            if (formationSpeed === 1.0) {
+                formationSpeed = 2.0;
+                btn.classList.add('active');
+                btn.innerHTML = "⏩ 快进 2x";
+            } else if (formationSpeed === 2.0) {
+                formationSpeed = 4.0;
+                btn.classList.add('active');
+                btn.innerHTML = "⏩ 快进 4x";
+            } else {
+                formationSpeed = 1.0;
+                btn.classList.remove('active');
+                btn.innerHTML = "⏩ 快进 2x";
+            }
+        }
+
+        function showFastForwardBtn() {
+            const btn = document.getElementById('fastforward-btn');
+            btn.classList.add('show');
+            btn.onclick = toggleFastForward;
+        }
+
+        // 功能介绍展开/收起
+        document.getElementById('instructions-toggle').addEventListener('click', function() {
+            const panel = document.getElementById('instructions-panel');
+            panel.classList.toggle('open');
+        });
+
+        function hideFastForwardBtn() {
+            const btn = document.getElementById('fastforward-btn');
+            btn.classList.remove('show');
+            btn.classList.remove('active');
+            formationSpeed = 1.0;
+            btn.innerHTML = "⏩ 快进 2x";
+        }
+
+        function updateFormation() {
+            const elapsed = formationElapsed;
+            const FO = formationOrigOpacities;
+
+            // --- 阶段1: 星系消散 (0-6s) ---
+            if (elapsed < 6) {
+                const t = elapsed / 6;
+                orbitalTrails.forEach((trail, i) => {
+                    trail.mesh.material.opacity = FO.trails[i] * (1 - t);
+                    trail.orbitLine.material.opacity = FO.orbitLines[i] * (1 - t);
+                });
+                accretionDisk.material.opacity = FO.disk * (1 - t);
+                lensingRing.material.opacity = FO.lens * (1 - t);
+                starfield.material.opacity = FO.star * (1 - t);
+                photonRing.material.opacity = FO.photon * (1 - t);
+                blackHole.scale.setScalar(1);
+
+                if (t < 0.02) showFormationText("星系消散", "轨道带逐渐瓦解...", "阶段 1/9");
+                if (t > 0.35 && t < 0.38) showFormationText("星系消散", "吸积盘光芒褪去...", "阶段 1/9");
+                if (t > 0.7 && t < 0.73) showFormationText("星系消散", "星空背景逐渐暗淡...", "阶段 1/9");
+            }
+
+            // --- 阶段2: 原始星云 (6-11s) ---
+            else if (elapsed < 11) {
+                const t = (elapsed - 6) / 5;
+
+                orbitalTrails.forEach((trail) => {
+                    trail.mesh.material.opacity = 0;
+                    trail.orbitLine.material.opacity = 0;
+                });
+                accretionDisk.material.opacity = 0;
+                lensingRing.material.opacity = 0;
+                starfield.material.opacity = 0;
+                photonRing.material.opacity = 0;
+                blackHole.scale.setScalar(Math.max(0, 1 - t * 0.8));
+
+                formationCloud.material.opacity = t;
+
+                const cloudPos = formationCloudData.positions;
+                const cloudParams = formationCloudData.params;
+                for (let i = 0; i < cloudParams.length; i++) {
+                    const p = cloudParams[i];
+                    p.currentAngle += p.swirlSpeed * 0.2;
+                    cloudPos[i * 3] = p.startR * Math.cos(p.currentAngle);
+                    cloudPos[i * 3 + 1] = p.startY;
+                    cloudPos[i * 3 + 2] = p.startR * Math.sin(p.currentAngle);
+                }
+                formationCloud.geometry.attributes.position.needsUpdate = true;
+
+                if (t < 0.02) showFormationText("原始星云", "物质从虚空中缓缓凝聚...", "阶段 2/9");
+                if (t > 0.45 && t < 0.48) showFormationText("原始星云", "氢氦尘埃弥漫整个空间...", "阶段 2/9");
+                if (t > 0.8 && t < 0.83) showFormationText("原始星云", "微小的密度涨落正在孕育...", "阶段 2/9");
+            }
+
+            // --- 阶段3: 引力坍缩 (11-21s) ---
+            else if (elapsed < 21) {
+                const t = (elapsed - 11) / 10;
+
+                blackHole.scale.setScalar(0);
+                formationCloud.material.opacity = 1;
+
+                const cloudPos = formationCloudData.positions;
+                const cloudParams = formationCloudData.params;
+                for (let i = 0; i < cloudParams.length; i++) {
+                    const p = cloudParams[i];
+                    const localT = Math.max(0, Math.min(1, (t - p.delay) / (1 - p.delay)));
+                    const easedT = localT * localT * (3 - 2 * localT);
+
+                    const r = p.startR * (1 - easedT) + p.targetR * easedT;
+                    p.currentAngle += p.swirlSpeed * (1 + easedT * 3);
+                    const yFlat = p.startY * (1 - easedT) * (1 - easedT * 0.5);
+
+                    cloudPos[i * 3] = r * Math.cos(p.currentAngle);
+                    cloudPos[i * 3 + 1] = yFlat;
+                    cloudPos[i * 3 + 2] = r * Math.sin(p.currentAngle);
+                }
+                formationCloud.geometry.attributes.position.needsUpdate = true;
+
+                if (t < 0.02) showFormationText("引力坍缩", "密度峰开始吸引周围物质...", "阶段 3/9");
+                if (t > 0.2 && t < 0.23) showFormationText("引力坍缩", "引力势阱逐渐加深...", "阶段 3/9");
+                if (t > 0.4 && t < 0.43) showFormationText("坍缩加速", "自由下落阶段开始...", "阶段 3/9");
+                if (t > 0.6 && t < 0.63) showFormationText("坍缩加速", "角动量使物质旋转加快...", "阶段 3/9");
+                if (t > 0.8 && t < 0.83) showFormationText("接近临界", "核心密度急剧攀升...", "阶段 3/9");
+            }
+
+            // --- 阶段4: 盘面形成 (21-26s) ---
+            else if (elapsed < 26) {
+                const t = (elapsed - 21) / 5;
+
+                blackHole.scale.setScalar(0);
+                formationCloud.material.opacity = 1;
+
+                const cloudPos = formationCloudData.positions;
+                const cloudParams = formationCloudData.params;
+                for (let i = 0; i < cloudParams.length; i++) {
+                    const p = cloudParams[i];
+                    p.currentAngle += p.swirlSpeed * 4;
+                    const yDamp = p.startY * 0.1 * (1 - t) * (1 - t);
+                    cloudPos[i * 3] = p.targetR * Math.cos(p.currentAngle);
+                    cloudPos[i * 3 + 1] = yDamp;
+                    cloudPos[i * 3 + 2] = p.targetR * Math.sin(p.currentAngle);
+                }
+                formationCloud.geometry.attributes.position.needsUpdate = true;
+
+                if (t < 0.02) showFormationText("盘面形成", "垂直方向物质向中面坠落...", "阶段 4/9");
+                if (t > 0.35 && t < 0.38) showFormationText("盘面形成", "旋转盘逐渐扁平化...", "阶段 4/9");
+                if (t > 0.7 && t < 0.73) showFormationText("盘面形成", "开普勒旋转建立...", "阶段 4/9");
+            }
+
+            // --- 阶段5: 核心点燃 (26-31s) ---
+            else if (elapsed < 31) {
+                const t = (elapsed - 26) / 5;
+
+                if (!flashSphere) {
+                    flashSphere = new THREE.Mesh(
+                        new THREE.SphereGeometry(CONFIG.blackHoleRadius * 0.2, 32, 32),
+                        new THREE.MeshBasicMaterial({
+                            color: 0xffffee, transparent: true, opacity: 0.2,
+                            blending: THREE.AdditiveBlending
+                        })
+                    );
+                    scene.add(flashSphere);
+                }
+                flashSphere.scale.setScalar(0.2 + t * 1.5);
+                flashSphere.material.opacity = 0.2 + t * 0.4;
+
+                bloomStrengthBoost = t * 0.4;
+
+                const cloudPos = formationCloudData.positions;
+                const cloudParams = formationCloudData.params;
+                for (let i = 0; i < cloudParams.length; i++) {
+                    const p = cloudParams[i];
+                    const r = p.targetR * (1 - t * 0.2);
+                    p.currentAngle += p.swirlSpeed * 5;
+                    cloudPos[i * 3] = r * Math.cos(p.currentAngle);
+                    cloudPos[i * 3 + 1] = 0;
+                    cloudPos[i * 3 + 2] = r * Math.sin(p.currentAngle);
+                }
+                formationCloud.geometry.attributes.position.needsUpdate = true;
+                formationCloud.material.opacity = 1 - t * 0.15;
+                blackHole.scale.setScalar(0);
+
+                if (t < 0.02) showFormationText("核心点燃", "中心温度突破临界点...", "阶段 5/9");
+                if (t > 0.35 && t < 0.38) showFormationText("核心点燃", "辐射压力与引力对抗...", "阶段 5/9");
+                if (t > 0.7 && t < 0.73) showFormationText("核心点燃", "核心区域越来越亮...", "阶段 5/9");
+            }
+
+            // --- 阶段6: 黑洞诞生 (31-37s) ---
+            else if (elapsed < 37) {
+                const t = (elapsed - 31) / 6;
+
+                if (flashSphere) {
+                    const flashScale = 0.5 + t * 28;
+                    flashSphere.scale.set(flashScale, flashScale, flashScale);
+                    flashSphere.material.opacity = Math.max(0, (1 - t * 0.9) * 1.0);
+                }
+
+                bloomStrengthBoost = Math.max(0, 1 - t * 1.1);
+
+                blackHole.scale.setScalar(Math.min(1, t * 1.2));
+                photonRing.material.opacity = FO.photon * Math.min(1, t * 1.8);
+
+                const cloudPos = formationCloudData.positions;
+                const cloudParams = formationCloudData.params;
+                for (let i = 0; i < cloudParams.length; i++) {
+                    const p = cloudParams[i];
+                    const r = p.targetR * Math.max(0, 1 - t * 1.3);
+                    p.currentAngle += p.swirlSpeed * 7;
+                    cloudPos[i * 3] = r * Math.cos(p.currentAngle);
+                    cloudPos[i * 3 + 1] = 0;
+                    cloudPos[i * 3 + 2] = r * Math.sin(p.currentAngle);
+                }
+                formationCloud.geometry.attributes.position.needsUpdate = true;
+                formationCloud.material.opacity = Math.max(0, 1 - t * 1.5);
+
+                if (t < 0.02) showFormationText("黑洞诞生", "事件视界正在形成...", "阶段 6/9");
+                if (t > 0.25 && t < 0.28) showFormationText("黑洞诞生", "时空剧烈扭曲...", "阶段 6/9");
+                if (t > 0.5 && t < 0.53) showFormationText("黑洞诞生", "大闪光爆发...", "阶段 6/9");
+                if (t > 0.75 && t < 0.78) showFormationText("黑洞诞生", "残余物质被吞噬...", "阶段 6/9");
+            }
+
+            // --- 阶段7: 吸积盘形成 (37-47s) ---
+            else if (elapsed < 47) {
+                const t = (elapsed - 37) / 10;
+                const easedT = t * t * (3 - 2 * t);
+
+                if (flashSphere) {
+                    flashSphere.material.opacity = Math.max(0, (1 - t * 0.5) * 0.3);
+                    flashSphere.scale.setScalar(0.5 + (1 - t * 0.5) * 28);
+                }
+                if (t > 0.3 && formationCloud) {
+                    scene.remove(formationCloud);
+                    formationCloud = null;
+                }
+
+                bloomStrengthBoost = Math.max(0, (1 - t * 1.2) * 0.4);
+
+                blackHole.scale.setScalar(1);
+                photonRing.material.opacity = FO.photon;
+                accretionDisk.material.opacity = FO.disk * easedT;
+                lensingRing.material.opacity = FO.lens * easedT * 0.4;
+
+                accretionDisk.rotation.y += 0.004;
+                lensingRing.rotation.z += 0.002;
+
+                const pulse = 1 + Math.sin(time * 2) * 0.02;
+                photonRing.scale.set(pulse, pulse, pulse);
+
+                if (t < 0.02) showFormationText("吸积盘形成", "外围气体开始落入...", "阶段 7/9");
+                if (t > 0.2 && t < 0.23) showFormationText("吸积盘形成", "摩擦加热盘体...", "阶段 7/9");
+                if (t > 0.4 && t < 0.43) showFormationText("吸积盘形成", "温度升至数千度...", "阶段 7/9");
+                if (t > 0.6 && t < 0.63) showFormationText("吸积盘形成", "内缘发出炽热光芒...", "阶段 7/9");
+                if (t > 0.8 && t < 0.83) showFormationText("引力透镜", "光线开始沿弯曲路径传播...", "阶段 7/9");
+            }
+
+            // --- 阶段8: 轨道带演化 (47-62s) ---
+            else if (elapsed < 62) {
+                const t = (elapsed - 47) / 15;
+
+                if (flashSphere) { scene.remove(flashSphere); flashSphere = null; }
+                if (formationCloud) { scene.remove(formationCloud); formationCloud = null; }
+                bloomStrengthBoost = 0;
+
+                accretionDisk.material.opacity = FO.disk;
+                lensingRing.material.opacity = FO.lens;
+                photonRing.material.opacity = FO.photon;
+                blackHole.scale.setScalar(1);
+                accretionDisk.rotation.y += 0.0015;
+                lensingRing.rotation.z += 0.0008;
+
+                const pulse = 1 + Math.sin(time * 2) * 0.02;
+                photonRing.scale.set(pulse, pulse, pulse);
+
+                const beltStagger = [0, 0.1, 0.22, 0.36, 0.52, 0.7];
+                const beltDur = 0.26;
+                orbitalTrails.forEach((trail, i) => {
+                    const bt = Math.max(0, Math.min(1, (t - beltStagger[i]) / beltDur));
+                    const eb = bt * bt * (3 - 2 * bt);
+                    trail.mesh.material.opacity = FO.trails[i] * eb;
+                    trail.orbitLine.material.opacity = FO.orbitLines[i] * eb;
+                });
+
+                updateOrbitalTrails();
+
+                if (t < 0.02) showFormationText("轨道带演化", "第一条轨道带开始凝聚...", "阶段 8/9");
+                if (t > 0.18 && t < 0.21) showFormationText("轨道带演化", "第二条轨道带形成...", "阶段 8/9");
+                if (t > 0.38 && t < 0.41) showFormationText("轨道带演化", "内层轨道逐渐稳定...", "阶段 8/9");
+                if (t > 0.58 && t < 0.61) showFormationText("轨道带演化", "外层轨道带显现...", "阶段 8/9");
+                if (t > 0.78 && t < 0.81) showFormationText("轨道带演化", "六条轨道带全部就位...", "阶段 8/9");
+            }
+
+            // --- 阶段9: 星系成型 (62-70s) ---
+            else if (elapsed < 70) {
+                const t = (elapsed - 62) / 8;
+
+                orbitalTrails.forEach((trail, i) => {
+                    trail.mesh.material.opacity = FO.trails[i];
+                    trail.orbitLine.material.opacity = FO.orbitLines[i];
+                });
+                accretionDisk.material.opacity = FO.disk;
+                lensingRing.material.opacity = FO.lens;
+                photonRing.material.opacity = FO.photon;
+                blackHole.scale.setScalar(1);
+                accretionDisk.rotation.y += 0.001;
+                lensingRing.rotation.z += 0.0005;
+                updateOrbitalTrails();
+                const pulse = 1 + Math.sin(time * 2) * 0.02;
+                photonRing.scale.set(pulse, pulse, pulse);
+
+                starfield.material.opacity = FO.star * Math.min(1, t * 1.5);
+                starfield.rotation.y += 0.0002;
+
+                if (t < 0.02) showFormationText("星系成型", "遥远恒星逐渐显现...", "阶段 9/9");
+                if (t > 0.4 && t < 0.43) showFormationText("星系成型", "整个星系趋于稳定...", "阶段 9/9");
+                if (t > 0.8 && t < 0.83) showFormationText("星系形成完成", "卡冈图雅苏醒", "阶段 9/9");
+            }
+
+            // --- 完成 ---
+            else {
+                orbitalTrails.forEach((trail, i) => {
+                    trail.mesh.material.opacity = FO.trails[i];
+                    trail.orbitLine.material.opacity = FO.orbitLines[i];
+                });
+                accretionDisk.material.opacity = FO.disk;
+                lensingRing.material.opacity = FO.lens;
+                starfield.material.opacity = FO.star;
+                photonRing.material.opacity = FO.photon;
+                blackHole.scale.setScalar(1);
+                bloomStrengthBoost = 0;
+
+                formationActive = false;
+                showClickHint();
+                hideFormationText();
+                hideFastForwardBtn();
+                statusEl.innerText = "星系形成完成";
+                statusEl.style.color = "#cc88ff";
+            }
+        }
+
+        // ==========================================
+        // 黑洞内部系统
+        // ==========================================
+
+        function createInteriorScene() {
+            const tex = createParticleTexture();
+
+            // 内部粒子 - 红色扭曲粒子
+            const interiorCount = 12000;
+            const interiorGeo = new THREE.BufferGeometry();
+            const positions = new Float32Array(interiorCount * 3);
+            const colors = new Float32Array(interiorCount * 3);
+            const sizes = new Float32Array(interiorCount);
+            const interiorParams = [];
+
+            for (let i = 0; i < interiorCount; i++) {
+                const r = 30 + Math.random() * 400;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                const speed = 0.3 + Math.random() * 2;
+
+                positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                positions[i * 3 + 2] = r * Math.cos(phi);
+
+                const colorMix = Math.random();
+                if (colorMix < 0.5) {
+                    colors[i * 3] = 1.0;
+                    colors[i * 3 + 1] = 0.15 + Math.random() * 0.2;
+                    colors[i * 3 + 2] = 0.2 + Math.random() * 0.2;
+                } else if (colorMix < 0.8) {
+                    colors[i * 3] = 0.8 + Math.random() * 0.2;
+                    colors[i * 3 + 1] = 0.2 + Math.random() * 0.3;
+                    colors[i * 3 + 2] = 0.8 + Math.random() * 0.2;
+                } else {
+                    colors[i * 3] = 0.3 + Math.random() * 0.3;
+                    colors[i * 3 + 1] = 0.1 + Math.random() * 0.2;
+                    colors[i * 3 + 2] = 1.0;
+                }
+
+                sizes[i] = 1.5 + Math.random() * 3;
+
+                interiorParams.push({
+                    r, theta, phi, speed,
+                    wobble: Math.random() * Math.PI * 2,
+                    wobbleSpeed: 0.5 + Math.random() * 1.5
+                });
+            }
+
+            interiorGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            interiorGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            interiorGeo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+            const interiorMat = new THREE.PointsMaterial({
+                size: 2,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending,
+                map: tex,
+                depthWrite: false,
+                sizeAttenuation: true
+            });
+
+            interiorParticles = { mesh: new THREE.Points(interiorGeo, interiorMat), params: interiorParams, positions, geo: interiorGeo };
+            scene.add(interiorParticles.mesh);
+
+            // 多层发光环
+            const ringColors = [0xff2244, 0xcc33aa, 0x8844ff, 0xff4488, 0x6633ff];
+            for (let i = 0; i < 5; i++) {
+                const ringGeo = new THREE.TorusGeometry(60 + i * 35, 1.5 + i * 0.3, 16, 150);
+                const ringMat = new THREE.MeshBasicMaterial({
+                    color: ringColors[i],
+                    transparent: true,
+                    opacity: 0,
+                    blending: THREE.AdditiveBlending,
+                    side: THREE.DoubleSide
+                });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = Math.PI / 2 + (i % 2 === 0 ? 0.2 : -0.2);
+                ring.rotation.z = i * 0.4;
+                scene.add(ring);
+                interiorRings.push({ mesh: ring, speed: 0.001 + i * 0.0008, tiltSpeed: 0.0003 + i * 0.0002 });
+            }
+
+            // 奇点 - 中心极亮点
+            const singGeo = new THREE.SphereGeometry(3, 32, 32);
+            const singMat = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending
+            });
+            interiorSingularity = new THREE.Mesh(singGeo, singMat);
+            scene.add(interiorSingularity);
+        }
+
+        function enterInterior() {
+            if (interiorActive || formationActive) return;
+
+            interiorActive = true;
+            interiorTransition = 0;
+            interiorExiting = false;
+            keyBuffer = '';
+
+            // 保存相机状态
+            savedCameraPos = {
+                radius: cameraState.radius,
+                theta: cameraState.theta,
+                phi: cameraState.phi
+            };
+            savedBloomStrength = bloomStrengthBoost;
+
+            // 创建内部场景
+            if (!interiorParticles) {
+                createInteriorScene();
+            }
+
+            // 隐藏黑洞系统
+            blackHoleGroup.visible = false;
+            starfield.visible = false;
+
+            // 显示覆盖层
+            setTimeout(() => {
+                document.getElementById('interior-overlay').classList.add('show');
+            }, 2000);
+
+            statusEl.innerText = "进入事件视界...";
+            statusEl.style.color = "#ff3366";
+        }
+
+        function exitInterior() {
+            if (!interiorActive || interiorExiting) return;
+            interiorExiting = true;
+            document.getElementById('interior-overlay').classList.remove('show');
+            hideInteriorInfoPanel();
+            statusEl.innerText = "返回正常空间...";
+            statusEl.style.color = "#cc88ff";
+        }
+
+        function updateInterior(dt) {
+            const enterDuration = 2.5;
+            const exitDuration = 2;
+
+            if (!interiorExiting && interiorTransition < 1) {
+                interiorTransition = Math.min(1, interiorTransition + dt / enterDuration);
+                const t = interiorTransition;
+                const eased = t * t * (3 - 2 * t);
+
+                // 相机快速飞入
+                const targetRadius = 8;
+                cameraState.radius = savedCameraPos.radius * (1 - eased) + targetRadius * eased;
+
+                // 粒子和环逐渐显现
+                if (interiorParticles) {
+                    interiorParticles.mesh.material.opacity = eased * 0.9;
+                }
+                interiorRings.forEach((ring, i) => {
+                    ring.mesh.material.opacity = eased * (0.4 + i * 0.1);
+                });
+                if (interiorSingularity) {
+                    interiorSingularity.material.opacity = eased * 1.0;
+                }
+
+                // Bloom 增强
+                bloomStrengthBoost = eased * 3;
+
+                if (interiorTransition >= 1) {
+                    statusEl.innerText = "奇点核心";
+                    statusEl.style.color = "#ff3366";
+                }
+            } else if (interiorExiting && interiorTransition > 0) {
+                interiorTransition = Math.max(0, interiorTransition - dt / exitDuration);
+                const t = interiorTransition;
+                const eased = t * t * (3 - 2 * t);
+
+                cameraState.radius = savedCameraPos.radius * (1 - eased) + 8 * eased;
+
+                if (interiorParticles) {
+                    interiorParticles.mesh.material.opacity = eased * 0.9;
+                }
+                interiorRings.forEach((ring, i) => {
+                    ring.mesh.material.opacity = eased * (0.4 + i * 0.1);
+                });
+                if (interiorSingularity) {
+                    interiorSingularity.material.opacity = eased * 1.0;
+                }
+
+                bloomStrengthBoost = eased * 3;
+
+                if (interiorTransition <= 0) {
+                    interiorActive = false;
+                    interiorExiting = false;
+                    blackHoleGroup.visible = true;
+                    starfield.visible = true;
+                    bloomStrengthBoost = savedBloomStrength;
+                    statusEl.innerText = "等待手势...";
+                    statusEl.style.color = "#cc6688";
+                }
+            }
+
+            // 内部粒子运动 - 螺旋坠入奇点（增强版）
+            if (interiorParticles && interiorTransition > 0.3) {
+                const positions = interiorParticles.positions;
+                const params = interiorParticles.params;
+                const activeFactor = Math.min(1, (interiorTransition - 0.3) / 0.7);
+                const time2 = time * 2;
+
+                for (let i = 0; i < params.length; i++) {
+                    const p = params[i];
+                    // 加速旋转
+                    p.theta += p.speed * dt * (0.8 + activeFactor * 1.5);
+                    // 上下波动更剧烈
+                    p.phi += Math.sin(time2 * p.wobbleSpeed + p.wobble) * 0.02 * activeFactor;
+                    // 螺旋向心加速
+                    p.r -= p.speed * dt * (10 + activeFactor * 20);
+
+                    // 被中心引力拉伸的效果 - 越靠近奇点速度越快
+                    const gravityFactor = 1 + (1 - p.r / 450) * 2 * activeFactor;
+                    p.theta += p.speed * dt * gravityFactor * 0.5;
+
+                    if (p.r < 4) {
+                        p.r = 380 + Math.random() * 180;
+                        p.theta = Math.random() * Math.PI * 2;
+                        p.phi = Math.acos(2 * Math.random() - 1);
+                        p.speed = 0.5 + Math.random() * 2.5;
+                    }
+
+                    // 添加一些随机抖动模拟湍流
+                    const turbulence = Math.sin(time2 * 3 + p.wobble * 2) * 0.02 * activeFactor;
+                    positions[i * 3] = p.r * Math.sin(p.phi + turbulence) * Math.cos(p.theta);
+                    positions[i * 3 + 1] = p.r * Math.sin(p.phi) * Math.sin(p.theta + turbulence * 0.5);
+                    positions[i * 3 + 2] = p.r * Math.cos(p.phi + turbulence * 0.7);
+                }
+                interiorParticles.geo.attributes.position.needsUpdate = true;
+
+                // 粒子大小动态变化
+                const sizePulse = 1 + Math.sin(time2) * 0.3;
+                interiorParticles.mesh.material.size = 2 * sizePulse;
+            }
+
+            // 环旋转和波动（增强版）
+            interiorRings.forEach((ring, i) => {
+                // 交替方向旋转
+                const direction = i % 2 === 0 ? 1 : -1;
+                ring.mesh.rotation.z += ring.speed * direction * (1.5 + Math.sin(time + i) * 0.5);
+                // 剧烈的倾斜摆动
+                ring.mesh.rotation.x = Math.PI / 2 + Math.sin(time * ring.tiltSpeed * 2 + i * 1.3) * 0.6;
+                ring.mesh.rotation.y = Math.sin(time * ring.tiltSpeed * 1.5 + i) * 0.4;
+                // 呼吸式缩放
+                const pulse = 1 + Math.sin(time * 2 + i * 0.8) * 0.15 + Math.sin(time * 3.7 + i) * 0.08;
+                ring.mesh.scale.set(pulse, pulse, pulse);
+                // 半径脉动
+                ring.mesh.geometry.dispose?.();
+            });
+
+            // 奇点脉动（增强版）
+            if (interiorSingularity) {
+                const singPulse = 1 + Math.sin(time * 5) * 0.4 + Math.sin(time * 2.7) * 0.3 + Math.sin(time * 8.3) * 0.15;
+                interiorSingularity.scale.set(singPulse, singPulse, singPulse);
+                // 颜色在白-红-紫之间闪烁
+                const colorShift = Math.sin(time * 3) * 0.5 + 0.5;
+                interiorSingularity.material.color.setRGB(
+                    1,
+                    0.7 + colorShift * 0.3,
+                    0.5 + (1 - colorShift) * 0.5
+                );
+            }
+
+            // 相机轻微晃动（模拟引力扰动）
+            if (interiorTransition >= 1 && !interiorExiting) {
+                cameraState.theta += Math.sin(time * 1.5) * 0.002;
+                cameraState.phi += Math.sin(time * 2.1) * 0.0015;
+            }
+
+            // Bloom 动态脉动
+            if (interiorTransition >= 0.5) {
+                const bloomPulse = Math.sin(time * 2) * 0.5 + Math.sin(time * 4.3) * 0.3;
+                bloomStrengthBoost = Math.max(2, 3 + bloomPulse * (interiorTransition >= 1 ? 1.5 : 0.5));
+            }
+        }
+
+        // 键盘监听
+        document.addEventListener('keydown', (e) => {
+            const now = performance.now();
+
+            // 按 3 退出黑洞内部
+            if (e.key === '3' && interiorActive) {
+                exitInterior();
+                return;
+            }
+
+            // 按 4 进入黑洞内部
+            if (e.key === '4' && !interiorActive && !formationActive) {
+                enterInterior();
+                return;
+            }
+
+            // 亮度调节 - 1减 / 2加
+            if (e.key === '1' || e.key === '2') {
+                if (e.key === '1') {
+                    brightnessLevel = Math.max(-3, brightnessLevel - 1);
+                } else {
+                    brightnessLevel = Math.min(7, brightnessLevel + 1);
+                }
+                const step = brightnessSteps[brightnessLevel + 3];
+                statusEl.innerText = `亮度: ${step.label} (${brightnessLevel >= 0 ? '+' : ''}${brightnessLevel})`;
+                statusEl.style.color = "#cc88ff";
+                setTimeout(() => {
+                    if (!interiorActive && !formationActive) {
+                        statusEl.innerText = "等待手势...";
+                        statusEl.style.color = "#cc6688";
+                    }
+                }, 1500);
+                return;
+            }
+
+        });
+
+        // ==========================================
+        // 4. MediaPipe Hands 集成
+        // ==========================================
+        
+        // 预览 Canvas
+        const previewCanvas = document.getElementById('webcam-preview');
+        const previewCtx = previewCanvas.getContext('2d');
+        
+        function onResults(results) {
+            // 绘制预览图
+            previewCtx.save();
+            previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+            previewCtx.drawImage(results.image, 0, 0, previewCanvas.width, previewCanvas.height);
+            
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const landmarks = results.multiHandLandmarks[0];
+                
+                // 绘制骨架到小窗
+                drawConnectors(previewCtx, landmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 2});
+                drawLandmarks(previewCtx, landmarks, {color: '#FF0000', lineWidth: 1, radius: 2});
+
+                const wrist = landmarks[0];
+                const middleBase = landmarks[9];
+                
+                const dx = middleBase.x - wrist.x;
+                const dy = middleBase.y - wrist.y; 
+                cameraState.handRotation = dx * -5.0;
+                cameraState.handPitch = dy * 5.0;
+
+                const fingerTips = [8, 12, 16, 20];
+                const fingerMCPs = [5, 9, 13, 17];
+                
+                let foldedCount = 0;
+                
+                const distSq = (p1, p2) => (p1.x - p2.x)**2 + (p1.y - p2.y)**2;
+
+                for (let i = 0; i < 4; i++) {
+                    const dTip = distSq(landmarks[fingerTips[i]], wrist);
+                    const dMcp = distSq(landmarks[fingerMCPs[i]], wrist);
+                    if (dTip < dMcp * 1.2) {
+                        foldedCount++;
+                    }
+                }
+
+                if (foldedCount >= 3) {
+                    cameraState.isFist = true;
+                    cameraState.isOpen = false;
+                    statusEl.innerText = "状态: ✊ 握拳 (拉远)";
+                    statusEl.style.color = "#cc4477";
+                } else if (foldedCount === 0) {
+                    cameraState.isFist = false;
+                    cameraState.isOpen = true;
+                    statusEl.innerText = "状态: ✋ 张开 (靠近)";
+                    statusEl.style.color = "#6699cc";
+                } else {
+                    cameraState.isFist = false;
+                    cameraState.isOpen = false;
+                    statusEl.innerText = "状态: 🤞 旋转控制中";
+                    statusEl.style.color = "#cc88ff";
+                }
+
+            } else {
+                cameraState.handRotation = 0;
+                cameraState.handPitch = 0;
+                cameraState.isFist = false;
+                cameraState.isOpen = false;
+                statusEl.innerText = "未检测到手";
+                statusEl.style.color = "#555";
+            }
+            previewCtx.restore();
+        }
+
+        function initMediaPipe() {
+            const videoElement = document.getElementById('input-video');
+
+            const hands = new window.Hands({locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }});
+
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            hands.onResults(onResults);
+
+            const cameraUtils = new window.Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({image: videoElement});
+                },
+                width: 640,
+                height: 480
+            });
+            
+            cameraUtils.start()
+                .then(() => {
+                    loadingEl.style.display = 'none';
+                })
+                .catch(err => {
+                    loadingEl.innerHTML = "摄像头启动失败: " + err;
+                });
+            
+            previewCanvas.width = 160;
+            previewCanvas.height = 120;
+        }
+
+        // ==========================================
+        // 启动
+        // ==========================================
+        initThree();
+        animate();
+        setTimeout(initMediaPipe, 1000);
+
+    </script>
+</body>
+</html>

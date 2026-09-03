@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@mediapipe/control_utils": "^0.6.1675466023",
+    "@mediapipe/drawing_utils": "^0.3.1675466124",
+    "@mediapipe/hands": "^0.4.1675469240",
+    "ogl": "^1.0.11",
+    "three": "^0.160.0"
+  }
+}

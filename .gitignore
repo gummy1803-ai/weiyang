@@ -2,3 +2,9 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+visits.db
+visits.db-wal
+visits.db-shm
+__pycache__/
+# 注意:libs/ 目录保留在仓库里,是 CDN 本地化的核心资产,比赛现场断网也能跑
+# node_modules 由 npm install 生成,不需要提交

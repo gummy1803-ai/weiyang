@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星系管理后台 - 用户统计</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,170,0,0.35);
+            padding-bottom: 16px;
+            margin-bottom: 28px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 300;
+            letter-spacing: 6px;
+            text-shadow: 0 0 16px rgba(255,166,0,0.35);
+        }
+        .header .links { font-size: 13px; }
+        .header a { color: rgba(255,255,255,0.6); text-decoration: none; margin-left: 18px; }
+        .header a:hover { color: #ffaa00; }
+
+        .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+        .card {
+            border: 1px solid #222;
+            padding: 18px 16px;
+            text-align: center;
+        }
+        .card .num { font-size: 30px; font-weight: 600; color: #ffaa00; }
+        .card .label { margin-top: 6px; font-size: 12px; letter-spacing: 2px; color: rgba(255,255,255,0.5); }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 30px 0 12px;
+        }
+        .toolbar h2 { margin: 0; font-size: 15px; font-weight: 400; letter-spacing: 3px; color: rgba(255,255,255,0.8); }
+        .toolbar .right { display: flex; align-items: center; gap: 12px; font-size: 12px; color: rgba(255,255,255,0.4); }
+        #refresh-btn {
+            background: transparent;
+            border: 1px solid #444;
+            color: rgba(255,255,255,0.75);
+            padding: 6px 16px;
+            font-size: 12px;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        #refresh-btn:hover { border-color: #ffaa00; color: #ffaa00; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #1a1a1a; }
+        th { color: rgba(255,255,255,0.45); font-weight: 400; letter-spacing: 2px; font-size: 12px; }
+        td { color: rgba(255,255,255,0.85); }
+        td.mono { font-family: Consolas, monospace; color: #00ffcc; }
+        .empty-row td { text-align: center; color: rgba(255,255,255,0.35); padding: 36px 0; letter-spacing: 2px; }
+
+        .conn-status { font-size: 12px; letter-spacing: 1px; }
+        .conn-status.ok { color: #00ff88; }
+        .conn-status.bad { color: #ff5555; }
+
+        @media (max-width: 640px) {
+            .cards { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>星系管理后台</h1>
+            <div class="links">
+                <a href="/galaxy.html">进入星系</a>
+                <a href="/docs">接口调试</a>
+            </div>
+        </div>
+
+        <div class="cards">
+            <div class="card"><div class="num" id="stat-total">--</div><div class="label">累计进入次数</div></div>
+            <div class="card"><div class="num" id="stat-unique">--</div><div class="label">累计独立访客</div></div>
+            <div class="card"><div class="num" id="stat-today">--</div><div class="label">今日进入次数</div></div>
+            <div class="card"><div class="num" id="stat-today-unique">--</div><div class="label">今日独立访客</div></div>
+        </div>
+
+        <div class="toolbar">
+            <h2>最近进入记录</h2>
+            <div class="right">
+                <span class="conn-status" id="conn-status">连接中...</span>
+                <span id="update-time"></span>
+                <button id="refresh-btn">刷新</button>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr><th>#</th><th>访客昵称</th><th>访客 IP</th><th>进入时间</th></tr>
+            </thead>
+            <tbody id="records-body">
+                <tr class="empty-row"><td colspan="4">加载中...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const $ = (id) => document.getElementById(id);
+
+        function render(data) {
+            $('stat-total').innerText = data.stats.totalVisits;
+            $('stat-unique').innerText = data.stats.uniqueVisitors;
+            $('stat-today').innerText = data.stats.todayVisits;
+            $('stat-today-unique').innerText = data.stats.todayVisitors;
+
+            const body = $('records-body');
+            body.innerHTML = '';
+            if (!data.records.length) {
+                const tr = document.createElement('tr');
+                tr.className = 'empty-row';
+                tr.innerHTML = '<td colspan="4">暂无数据</td>';
+                body.appendChild(tr);
+            } else {
+                data.records.forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${r.id}</td><td>${r.nickname}</td><td class="mono">${r.ip}</td><td class="mono">${r.time}</td>`;
+                    body.appendChild(tr);
+                });
+            }
+
+            // 健康状态
+            if (data.health) {
+                const h = data.health;
+                const mins = Math.floor(h.uptimeSec / 60);
+                const uptimeText = mins >= 60 ? `${Math.floor(mins / 60)} 小时 ${mins % 60} 分` : `${mins} 分钟`;
+                $('conn-status').innerText = `数据库 ${h.db ? '正常' : '异常'} · 服务已运行 ${uptimeText} · 活跃验证码 ${h.captchaActive}`;
+                $('conn-status').className = 'conn-status ' + (h.db ? 'ok' : 'bad');
+            } else {
+                $('conn-status').innerText = '已连接';
+                $('conn-status').className = 'conn-status ok';
+            }
+            $('update-time').innerText = '更新于 ' + new Date().toLocaleTimeString();
+        }
+
+        function load() {
+            fetch('/api/visits?limit=100')
+                .then(res => { if (!res.ok) throw new Error(res.status); return res.json(); })
+                .then(render)
+                .catch(() => {
+                    $('conn-status').innerText = '连接失败,请确认已运行 python server.py';
+                    $('conn-status').className = 'conn-status bad';
+                });
+        }
+
+        $('refresh-btn').addEventListener('click', load);
+        load();
+        setInterval(load, 5000);  // 每 5 秒自动刷新
+    </script>
+</body>
+</html>

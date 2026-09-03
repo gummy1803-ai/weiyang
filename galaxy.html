@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>粒子星系 - 多星球装配版</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* 用于MediaPipe输入的视频，隐藏 */
+        #input-video {
+            display: none;
+        }
+
+        /* UI 提示层 */
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            color: rgba(255, 255, 255, 0.8);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 166, 0, 0.8);
+        }
+
+        .instruction {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 8px;
+            border-left: 3px solid #ffaa00;
+        }
+
+        .status {
+            margin-top: 5px;
+            font-weight: bold;
+            color: #00ffcc;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            z-index: 20;
+            text-align: center;
+        }
+
+        /* ===== 进入界面(资源调配层) ===== */
+        #entry-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 100;
+            background: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.6s ease;
+        }
+        #entry-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        /* 银河系星尘背景(OGL,React Bits Galaxy 精确转换版) */
+        #bg-galaxy {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 0;
+        }
+        .entry-box {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            color: #fff;
+            max-width: 520px;
+            padding: 0 24px;
+        }
+        .entry-sub {
+            font-size: 11px;
+            letter-spacing: 4px;
+            color: rgba(255,255,255,0.45);
+            margin-bottom: 14px;
+        }
+        .entry-title {
+            font-size: 42px;
+            margin: 0;
+            letter-spacing: 12px;
+            text-indent: 12px;
+            font-weight: 300;
+            text-shadow: 0 0 24px rgba(255,166,0,0.35);
+        }
+        .entry-divider {
+            width: 56px;
+            height: 1px;
+            background: rgba(255,166,0,0.6);
+            margin: 26px auto;
+        }
+        .entry-input {
+            display: block;
+            width: 262px;
+            margin: 0 auto;
+            padding: 10px 12px;
+            font-size: 14px;
+            background: #0d0d0d;
+            border: 1px solid #333;
+            color: #fff;
+            text-align: center;
+            letter-spacing: 1px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .entry-input:focus { border-color: #ffaa00; }
+        .entry-input::placeholder { color: rgba(255,255,255,0.3); }
+        .captcha-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 12px;
+        }
+        #captcha-img {
+            width: 120px;
+            height: 46px;
+            cursor: pointer;
+            border: 1px solid #333;
+            background: #0d0d0d;
+            overflow: hidden;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: rgba(255,255,255,0.35);
+            user-select: none;
+        }
+        #captcha-img svg { display: block; }
+        #captcha-img:hover { border-color: #ffaa00; }
+        .captcha-row .entry-input { width: 140px; margin: 0; }
+        #entry-status {
+            font-size: 13px;
+            color: #00ffcc;
+            min-height: 18px;
+            margin-bottom: 10px;
+        }
+        .entry-progress {
+            width: 300px;
+            height: 8px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,170,0,0.45);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 18px;
+            box-shadow: 0 0 10px rgba(255,170,0,0.18);
+        }
+        .entry-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff7700, #ffaa00, #ffdd55);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 8px rgba(255,170,0,0.85);
+        }
+        #entry-btn {
+            font-size: 14px;
+            letter-spacing: 6px;
+            text-indent: 6px;
+            color: #0a0a0a;
+            background: #ffaa00;
+            border: none;
+            padding: 12px 48px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        #entry-btn:hover:not(:disabled) { background: #ffcc44; }
+        #entry-btn:active:not(:disabled) { transform: scale(0.97); }
+        #entry-btn:disabled { background: #333; color: #777; cursor: default; }
+        #entry-stats {
+            margin-top: 16px;
+            font-size: 12px;
+            letter-spacing: 1px;
+            color: #ffaa00;
+            min-height: 16px;
+        }
+        .entry-note {
+            margin-top: 14px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.3);
+        }
+
+        /* 摄像头预览小窗 */
+        #webcam-preview {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 160px;
+            height: 120px;
+            z-index: 10;
+            border: 2px solid #333;
+            border-radius: 8px;
+            opacity: 0.7;
+            transform: scaleX(-1); /* 镜像翻转 */
+        }
+
+        /* ===== 行星导航按钮栏 ===== */
+        #planet-nav {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 12;
+            display: flex;
+            gap: 12px;
+            pointer-events: auto;
+        }
+        .nav-btn {
+            background: rgba(10, 5, 25, 0.7);
+            border: 1px solid rgba(130, 80, 220, 0.4);
+            border-radius: 20px;
+            padding: 8px 18px;
+            color: #bbaaff;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            letter-spacing: 1px;
+            backdrop-filter: blur(4px);
+        }
+        .nav-btn:hover {
+            background: rgba(130, 80, 255, 0.2);
+            box-shadow: 0 0 15px rgba(130, 80, 255, 0.5);
+            border-color: #9966ff;
+            color: #ddd0ff;
+        }
+        .nav-btn.active {
+            background: rgba(130, 80, 255, 0.35);
+            border-color: #bbaaff;
+            color: #ffccff;
+            box-shadow: 0 0 20px rgba(150, 100, 255, 0.7);
+        }
+
+        /* ===== 行星信息面板 ===== */
+        #info-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            z-index: 20;
+            width: min(440px, 85vw);
+            background: rgba(8, 5, 20, 0.94);
+            border: 1px solid rgba(130, 80, 220, 0.4);
+            border-radius: 16px;
+            padding: 28px 32px;
+            color: #ddd;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 0 40px rgba(100, 50, 180, 0.2), 0 20px 60px rgba(0, 0, 0, 0.8);
+        }
+        #info-panel.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+        #info-panel .info-title {
+            font-size: 1.8rem;
+            color: #cc99ff;
+            margin-bottom: 6px;
+            letter-spacing: 5px;
+            text-shadow: 0 0 25px rgba(150, 60, 255, 0.8), 0 2px 0 rgba(0, 0, 0, 0.8);
+            font-weight: 900;
+        }
+        #info-panel .info-subtitle {
+            font-size: 0.85rem;
+            color: rgba(170, 130, 220, 0.6);
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(130, 80, 220, 0.25);
+            letter-spacing: 1px;
+        }
+        #info-panel .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 7px 0;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        #info-panel .info-row:last-of-type {
+            border-bottom: none;
+        }
+        #info-panel .info-label {
+            color: rgba(180, 160, 210, 0.5);
+        }
+        #info-panel .info-value {
+            color: #bb99ee;
+            font-weight: 500;
+        }
+        #info-panel .info-desc {
+            margin-top: 16px;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            color: rgba(200, 180, 230, 0.7);
+            padding-top: 12px;
+            border-top: 1px solid rgba(130, 80, 220, 0.2);
+        }
+        #info-panel .info-close {
+            margin-top: 16px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: rgba(150, 110, 200, 0.4);
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+        /* ===== 功能介绍展开面板(队友原版) ===== */
+        #instructions-panel {
+            position: absolute;
+            top: 65px;
+            left: 20px;
+            z-index: 10;
+            width: 320px;
+            max-width: calc(100vw - 40px);
+        }
+        #instructions-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(10, 5, 25, 0.7);
+            border: 1px solid rgba(130, 80, 220, 0.4);
+            border-radius: 10px;
+            padding: 8px 14px;
+            color: rgba(200, 180, 230, 0.8);
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+            user-select: none;
+            backdrop-filter: blur(4px);
+        }
+        #instructions-toggle:hover {
+            background: rgba(20, 10, 40, 0.85);
+            border-color: rgba(150, 100, 255, 0.6);
+            color: #cc99ff;
+            box-shadow: 0 0 12px rgba(130, 80, 255, 0.3);
+        }
+        #instructions-toggle .toggle-icon {
+            font-size: 1rem;
+            transition: transform 0.3s ease;
+            display: inline-block;
+        }
+        #instructions-panel.open #instructions-toggle .toggle-icon {
+            transform: rotate(90deg);
+        }
+        #instructions-content {
+            margin-top: 6px;
+            font-size: 0.85rem;
+            background: rgba(10, 5, 25, 0.85);
+            padding: 14px 16px;
+            border-radius: 10px;
+            border-left: 3px solid #8855ff;
+            color: rgba(200, 180, 230, 0.75);
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+            backdrop-filter: blur(6px);
+        }
+        #instructions-panel.open #instructions-content {
+            max-height: 500px;
+            opacity: 1;
+            padding: 14px 16px;
+            margin-top: 6px;
+        }
+        /* 卡冈图雅专属操作提示:默认隐藏,与黑洞交互时由 main.js 动态显示 */
+        #gargantua-hints {
+            display: none;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 170, 0, 0.4);
+            color: rgba(255, 200, 120, 0.9);
+        }
+        #gargantua-hints.show { display: block; }
+
+        /* ===== 星系形成文字覆盖层(顶部) ===== */
+        #formation-overlay {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.6s ease, top 0.6s ease;
+        }
+        #formation-overlay.show {
+            opacity: 1;
+            top: 40px;
+        }
+        #formation-overlay .formation-title {
+            font-size: 2rem;
+            color: #cc88ff;
+            text-shadow: 0 0 30px rgba(150, 60, 255, 1), 0 0 80px rgba(200, 40, 120, 0.7), 0 3px 0 rgba(0, 0, 0, 0.9);
+            letter-spacing: 8px;
+            font-weight: 900;
+        }
+        #formation-overlay .formation-sub {
+            font-size: 0.95rem;
+            color: rgba(180, 160, 220, 0.65);
+            margin-top: 8px;
+            letter-spacing: 2px;
+        }
+        #formation-overlay .formation-stage {
+            font-size: 0.75rem;
+            color: rgba(150, 100, 200, 0.45);
+            margin-top: 6px;
+            letter-spacing: 3px;
+        }
+
+        /* ===== 快进按钮 ===== */
+        #fastforward-btn {
+            position: absolute;
+            top: 100px;
+            right: 30px;
+            z-index: 16;
+            background: rgba(10, 5, 25, 0.7);
+            border: 1px solid rgba(150, 100, 220, 0.6);
+            border-radius: 20px;
+            padding: 8px 18px;
+            color: #bbaaff;
+            font-size: 13px;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            font-family: inherit;
+            letter-spacing: 1px;
+            text-shadow: 0 0 6px rgba(130, 80, 255, 0.5);
+        }
+        #fastforward-btn.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #fastforward-btn:hover {
+            background: rgba(130, 80, 255, 0.25);
+            box-shadow: 0 0 15px rgba(130, 80, 255, 0.5);
+            border-color: #9966ff;
+            color: #ddd0ff;
+        }
+        #fastforward-btn.active {
+            background: rgba(200, 60, 120, 0.3);
+            border-color: #cc4477;
+            color: #ffccdd;
+            box-shadow: 0 0 20px rgba(200, 60, 120, 0.6);
+            text-shadow: 0 0 8px rgba(255, 100, 150, 0.6);
+        }
+
+        /* ===== 黑洞内部覆盖层 ===== */
+        #interior-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 30;
+            text-align: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+        #interior-overlay.show {
+            opacity: 1;
+        }
+        #interior-overlay .interior-title {
+            font-size: 2.2rem;
+            color: #ff3366;
+            letter-spacing: 10px;
+            text-shadow: 0 0 30px rgba(255, 50, 100, 1), 0 0 80px rgba(200, 20, 80, 0.8);
+            font-weight: 900;
+            animation: interior-pulse 2s ease-in-out infinite;
+        }
+        #interior-overlay .interior-sub {
+            font-size: 0.9rem;
+            color: rgba(255, 150, 180, 0.6);
+            margin-top: 12px;
+            letter-spacing: 3px;
+        }
+        #interior-overlay .interior-hint {
+            font-size: 0.75rem;
+            color: rgba(255, 100, 150, 0.35);
+            margin-top: 20px;
+            letter-spacing: 2px;
+        }
+        @keyframes interior-pulse {
+            0%, 100% { text-shadow: 0 0 30px rgba(255, 50, 100, 1), 0 0 80px rgba(200, 20, 80, 0.8); }
+            50% { text-shadow: 0 0 50px rgba(255, 80, 120, 1), 0 0 120px rgba(255, 30, 100, 1); }
+        }
+
+        /* ===== 内部简介面板 ===== */
+        #interior-info-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            z-index: 35;
+            width: min(440px, 85vw);
+            background: rgba(15, 5, 15, 0.96);
+            border: 1px solid rgba(255, 50, 100, 0.5);
+            border-radius: 16px;
+            padding: 28px 32px;
+            color: #ddd;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 0 50px rgba(255, 30, 80, 0.3), 0 20px 60px rgba(0, 0, 0, 0.9);
+        }
+        #interior-info-panel.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+        #interior-info-panel .info-title {
+            font-size: 1.8rem;
+            color: #ff4477;
+            margin-bottom: 6px;
+            letter-spacing: 5px;
+            text-shadow: 0 0 25px rgba(255, 50, 100, 0.9), 0 2px 0 rgba(0, 0, 0, 0.8);
+            font-weight: 900;
+        }
+        #interior-info-panel .info-subtitle {
+            font-size: 0.85rem;
+            color: rgba(255, 120, 150, 0.6);
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 50, 100, 0.25);
+            letter-spacing: 1px;
+        }
+        #interior-info-panel .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 7px 0;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        #interior-info-panel .info-row:last-of-type {
+            border-bottom: none;
+        }
+        #interior-info-panel .info-label {
+            color: rgba(200, 150, 170, 0.5);
+        }
+        #interior-info-panel .info-value {
+            color: #ff88aa;
+            font-weight: 500;
+        }
+        #interior-info-panel .info-desc {
+            margin-top: 16px;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            color: rgba(220, 180, 200, 0.7);
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 50, 100, 0.2);
+        }
+        #interior-info-panel .info-close {
+            margin-top: 16px;
+            text-align: center;
+            font-size: 0.75rem;
+            color: rgba(255, 100, 140, 0.4);
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+    </style>
+
+    <!-- 1. MediaPipe 依赖(已本地化到 libs/mediapipe,不再走 CDN) -->
+    <script src="./libs/mediapipe/control_utils.js"></script>
+    <script src="./libs/mediapipe/drawing_utils.js"></script>
+    <script src="./libs/mediapipe/hands.js"></script>
+
+    <!-- 2. Three.js Import Map for Modules(已本地化到 libs/three) -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./libs/three/three.module.js",
+                "three/addons/": "./libs/three/examples/jsm/",
+                "ogl": "./libs/ogl/src/index.js"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <!-- 进入界面:资源调配完成后点击进入 -->
+    <div id="entry-overlay">
+        <div id="bg-galaxy"></div>
+        <div class="entry-box">
+            <div class="entry-sub">GESTURE-DRIVEN PARTICLE GALAXY</div>
+            <h1 class="entry-title">粒子星系</h1>
+            <div class="entry-divider"></div>
+            <input id="nickname-input" class="entry-input" maxlength="12" placeholder="输入你的昵称(可选)" autocomplete="off">
+            <div class="captcha-row">
+                <div id="captcha-img" title="点击更换验证码">加载中...</div>
+                <input id="captcha-input" class="entry-input" maxlength="4" placeholder="验证码" autocomplete="off">
+            </div>
+            <div id="entry-status">正在调配资源...</div>
+            <div class="entry-progress"><div id="entry-progress-fill" class="entry-progress-fill"></div></div>
+            <button id="entry-btn" disabled>资源调配中</button>
+            <div id="entry-stats"></div>
+            <div class="entry-note">首次进入需加载手势引擎,完成后浏览器将缓存,下次秒开</div>
+        </div>
+    </div>
+
+    <div id="ui-layer">
+        <h1>粒子星系</h1>
+        <div id="instructions-panel">
+            <div id="instructions-toggle">
+                <span class="toggle-icon">▶</span> 功能介绍
+            </div>
+            <div id="instructions-content">
+                ① <b>旋转拳头</b>: 水平/垂直旋转视角<br>
+                ② <b>握拳/张开</b>: 远离 / 靠近<br>
+                ③ <b>拖拽/滚轮</b>: 旋转 / 缩放<br>
+                ④ <b>底部按钮</b>: 快速跳转到行星<br>
+                &nbsp;&nbsp;&nbsp;点击空白处: 返回星系视角
+                <div id="gargantua-hints">
+                    —— 卡冈图雅专属 ——<br>
+                    <b>点击黑洞</b>: 聚焦并查看简介(绕黑洞旋转)<br>
+                    <b>点击黑洞3次</b>: 星系形成过程（缩小观看更佳）<br>
+                    <b>按键4</b>: 进入黑洞内部 &nbsp;/&nbsp; 按 <b>3</b>: 退出内部<br>
+                    <b>按键1/2</b>: 亮度降低 / 升高
+                </div>
+            </div>
+        </div>
+        <div id="gesture-status" class="status">等待手势...</div>
+    </div>
+
+    <!-- 星系形成文字覆盖层(顶部) -->
+    <div id="formation-overlay">
+        <div class="formation-title"></div>
+        <div class="formation-sub"></div>
+        <div class="formation-stage"></div>
+    </div>
+
+    <!-- 快进按钮 -->
+    <button id="fastforward-btn">⏩ 快进 2x</button>
+
+    <!-- 行星导航按钮栏(由 main.js 根据 PLANET_SPECS 动态生成) -->
+    <div id="planet-nav"></div>
+
+    <!-- 行星信息面板(由 main.js 数据驱动填充) -->
+    <div id="info-panel">
+        <div class="info-title"></div>
+        <div class="info-subtitle"></div>
+        <div id="info-rows"></div>
+        <div class="info-desc"></div>
+        <div class="info-close">点击任意处关闭</div>
+    </div>
+
+    <!-- 黑洞内部覆盖层 -->
+    <div id="interior-overlay">
+        <div class="interior-title">奇点</div>
+        <div class="interior-sub">时空在此终结</div>
+        <div class="interior-hint">按 3 退出 &nbsp;|&nbsp; 长按中心查看简介</div>
+    </div>
+
+    <!-- 内部简介面板 -->
+    <div id="interior-info-panel">
+        <div class="info-title">奇点核心</div>
+        <div class="info-subtitle">黑洞内部 · 时空的尽头</div>
+        <div class="info-row"><span class="info-label">中心区域</span><span class="info-value">引力奇点</span></div>
+        <div class="info-row"><span class="info-label">时空曲率</span><span class="info-value">无限大</span></div>
+        <div class="info-row"><span class="info-label">密度</span><span class="info-value">趋于无穷</span></div>
+        <div class="info-row"><span class="info-label">已知物理定律</span><span class="info-value">不再适用</span></div>
+        <div class="info-row"><span class="info-label">时间方向</span><span class="info-value">指向奇点</span></div>
+        <div class="info-desc">
+            越过事件视界后，时空结构发生根本性反转。时间与空间的角色互换，所有路径都不可逆转地指向中心奇点。
+            在奇点处，已知的物理定律完全崩溃，需要量子引力理论才能描述。
+            卡冈图雅作为高速旋转的克尔黑洞，其内部可能存在一个环状奇点，理论上甚至可能通往其他宇宙。
+        </div>
+        <div class="info-close" id="interior-info-close">点击任意处关闭</div>
+    </div>
+
+    <!-- 隐藏的原始视频输入 -->
+    <video id="input-video"></video>
+    <!-- 用于反馈的小画布 -->
+    <canvas id="webcam-preview"></canvas>
+    <!-- 主3D场景 -->
+    <div id="canvas-container"></div>
+
+    <!-- 装配器入口:星球清单见 src/planets/index.js -->
+    <script type="module" src="./src/main.js?v=20260902v15"></script>
+</body>
+</html>

@@ -1,144 +1,156 @@
 // src/PlanetSpec.js
-// 星球组件接口规范 —— 所有星球工厂模块必须符合此契约
+// 星球对接契约 —— 成员星球必须符合本契约才能被装配进 galaxy.html
 // 维护者:架构协调者
-// 冻结时间:Day 1 22:00(冻结前可改,冻结后变更需全员评审)
+// ====================================================================
+// 【给成员的对接说明】
+//   1. 复制 src/planets/core.js 作为样板(它是原始星球的美感基准)
+//   2. 你的文件须导出一个 spec 对象,结构见下方 PlanetSpec 注释
+//   3. factory() 返回 THREE.Group,以 (0,0,0) 为中心 —— 轨道偏移由装配器做
+//   4. 动画写进 group.userData.tick(time),不要自己搞 requestAnimationFrame
+//   5. 纹理必须用共享的:import { particleTexture } from '../particleTexture.js'
+//   6. 自检:在文件末尾加 assertValidSpec(yourSpec),控制台无报错即合格
+// ====================================================================
+// 【形态各异的自由度】
+//   - 粒子形状/数量/颜色/大小/透明度、内部子对象层级、group.scale 整体缩放:全部自由
+//   - 建议美术半径控制在 30~80(相机 minDistance=120,太大会怼脸)
+// 【禁止清单】(违反 = 装配报错或评审打回)
+//   - 禁止 requestAnimationFrame / setInterval 自建动画循环,动画一律写 userData.tick
+//   - 禁止创建相机 / 渲染器 / 修改 scene、fog、后期处理(你只拥有你的 Group)
+//   - 禁止 new THREE.CanvasTexture 自制纹理(必须用共享 particleTexture,保证光点风格统一)
+// 【userData 能力钩子】"功能各异"的正确出口 —— 装配器自动识别,没写就跳过
+//   userData.tick(time)                     必须:每帧动画,time 每帧 +0.005
+//   userData.setColor(primary, secondary)   可选:主系统改色时调用
+//   userData.onClick()                      可选:预留点击交互(Day 6+ raycaster)
+//   userData.onHover()                      可选:预留悬停交互
+// ====================================================================
 
-// ===== 常量预算(硬约束,超出即不合规)=====
+import * as THREE from 'three';
+
+/** 性能预算 —— 装配时自动统计,超限直接抛错当场打回
+ * 依据:60fps 目标 + 原版单星球 16000 粒子实测流畅;真正瓶颈是 additive 混合的填充率(粒子重叠层数)而非顶点数
+ * 验收标准:5 星球全装配后实机帧率,红线可据此再调 */
 export const BUDGETS = {
-    MAX_PARTICLES_PER_PLANET: 8000,   // 单星球粒子上限
-    MAX_PARTICLES_TOTAL: 50000,      // 全场景粒子上限(装配时监控)
-    CORE_RADIUS_MIN: 20,
-    CORE_RADIUS_MAX: 80,
-    ORBIT_RADIUS_MIN: 80,
-    ORBIT_RADIUS_MAX: 700,
-    ORBIT_SPEED_MIN: 0.001,
-    ORBIT_SPEED_MAX: 0.03,
-    INCLINATION_RANGE: Math.PI / 4   // 轨道倾角绝对值上限
+    maxParticles: 60000,    // 单星球粒子总数上限(core 基准 16000)
+    maxRenderables: 12      // 单星球可渲染对象(Points/Mesh)上限(core 基准 3)
 };
 
-// ===== 星球类型枚举 =====
+/** 星球类型枚举 */
 export const PlanetType = {
-    STAR: 'star',     // 主星(中央,不公转)
-    PLANET: 'planet'  // 行星(绕中心公转)
+    STAR: 'star',       // 主星:必须居中,orbit 全 0
+    PLANET: 'planet'    // 行星:按 orbit 绕主星公转
 };
 
 /**
- * PlanetSpec 接口规范
- *
- * 每个星球模块必须导出一个符合此结构的对象,由 main.js 装配进场景。
- *
- * @typedef {Object} PlanetSpec
- * @property {string} name                  - 唯一标识(用于 scene.getObjectByName 检索)
- * @property {'star'|'planet'} type          - 星球类型
- * @property {() => THREE.Object3D} factory  - 工厂函数,返回完整星球对象(本体+星环)
- *                                             约定:返回对象必须以 (0,0,0) 为中心
- *                                             轨道偏移由 main.js 的父 Group 处理,设计师不要自己位移
- * @property {Object} orbit                 - 轨道参数(主星全部为 0)
- * @property {number} orbit.radius          - 距系统中心距离 [80,700]
- * @property {number} orbit.speed          - 公转角速度 [0.001,0.03]
- * @property {number} orbit.inclination     - 轨道倾角 [-π/4,π/4]
- * @property {Object} appearance           - 外观参数
- * @property {number} appearance.coreRadius       - 星球本体半径 [20,80]
- * @property {number} appearance.particleBudget   - 粒子预算(实际生成数 ≤8000)
- * @property {[number, number]} appearance.palette - [主色hex, 辅色hex]
- * @property {boolean} [appearance.supportsColorCustomization] - 是否支持运行时改色(主星为 true)
- *   若为 true,factory() 返回对象的 userData 上须挂 setColor(primaryHex, secondaryHex) 方法,
- *   供 UI 颜色面板实时调用
+ * spec 对象结构说明:
+ * {
+ *   name: 'planet1',                  // string,唯一标识,必须与 factory 返回的 group.name 一致
+ *   type: PlanetType.PLANET,          // PlanetType 枚举
+ *   factory: createPlanet1,           // () => THREE.Group,内含星球全部美术
+ *   orbit: {                          // 轨道参数(STAR 必须全 0)
+ *     radius: 0,                      //   轨道半径(到中心的距离),>=0
+ *     speed: 0                        //   公转角速度(弧度/帧)
+ *   },
+ *   appearance: {
+ *     palette: [0xff6600, 0xffffff],  // 本星球使用的颜色表(供检索/调试)
+ *     supportsColorCustomization: false  // 主星如支持改色,须挂 userData.setColor(primary, secondary)
+ *   },
+ *   info: {                           // 可选:UI 信息面板数据源
+ *     title: '卡冈图雅',
+ *     subtitle: '超大质量旋转黑洞',
+ *     rows: [                          // 键值对数组,面板逐行显示
+ *       { label: '类型', value: '克尔黑洞' },
+ *       { label: '质量', value: '~1亿倍太阳' }
+ *     ],
+ *     description: '一段描述文字...'
+ *   }
+ * }
  */
 
 /**
- * 校验 PlanetSpec 是否符合契约(静态字段校验,不调用 factory)
- * 用于 PR 合并前 / 装配前的断言
- * @param {PlanetSpec} spec
- * @returns {string[]} errors 数组,空数组表示通过
+ * 校验 spec 静态结构(装配前调用)
+ * @param {*} spec
+ * @throws {Error} 不符合契约时抛出,错误信息指明具体问题
  */
 export function validatePlanetSpec(spec) {
-    const errors = [];
+    const problems = [];
 
-    // name
-    if (typeof spec.name !== 'string' || spec.name.trim() === '') {
-        errors.push('name 必须是非空字符串');
+    if (!spec || typeof spec !== 'object') {
+        throw new Error('[PlanetSpec] spec 必须是对象');
     }
-
-    // type
+    if (typeof spec.name !== 'string' || spec.name.length === 0) {
+        problems.push('name 必须是非空字符串');
+    }
     if (!Object.values(PlanetType).includes(spec.type)) {
-        errors.push(`type 必须是 'star' 或 'planet',当前: ${spec.type}`);
+        problems.push(`type 必须是 PlanetType 之一(${Object.values(PlanetType).join('/')})`);
     }
-
-    // factory
     if (typeof spec.factory !== 'function') {
-        errors.push('factory 必须是函数');
+        problems.push('factory 必须是函数');
     }
-
-    // orbit
     if (!spec.orbit || typeof spec.orbit !== 'object') {
-        errors.push('orbit 必须是对象');
+        problems.push('orbit 必须是 { radius, speed } 对象');
     } else {
-        // 主星轨道固定为 0(不公转)
-        if (spec.type === PlanetType.STAR) {
-            if (spec.orbit.radius !== 0) errors.push('主星 orbit.radius 必须为 0');
-            if (spec.orbit.speed !== 0) errors.push('主星 orbit.speed 必须为 0(不公转)');
-        } else {
-            const r = spec.orbit.radius;
-            if (typeof r !== 'number' || r < BUDGETS.ORBIT_RADIUS_MIN || r > BUDGETS.ORBIT_RADIUS_MAX) {
-                errors.push(`orbit.radius 必须在 [${BUDGETS.ORBIT_RADIUS_MIN}, ${BUDGETS.ORBIT_RADIUS_MAX}] 内,当前: ${r}`);
-            }
-            const s = spec.orbit.speed;
-            if (typeof s !== 'number' || s < BUDGETS.ORBIT_SPEED_MIN || s > BUDGETS.ORBIT_SPEED_MAX) {
-                errors.push(`orbit.speed 必须在 [${BUDGETS.ORBIT_SPEED_MIN}, ${BUDGETS.ORBIT_SPEED_MAX}] 内,当前: ${s}`);
-            }
+        if (typeof spec.orbit.radius !== 'number' || spec.orbit.radius < 0) {
+            problems.push('orbit.radius 必须是 >= 0 的数字');
         }
-        const inc = spec.orbit.inclination;
-        if (typeof inc !== 'number' || Math.abs(inc) > BUDGETS.INCLINATION_RANGE) {
-            errors.push(`orbit.inclination 绝对值不得超过 ${BUDGETS.INCLINATION_RANGE.toFixed(3)}`);
+        if (typeof spec.orbit.speed !== 'number') {
+            problems.push('orbit.speed 必须是数字');
+        }
+        if (spec.type === PlanetType.STAR && (spec.orbit.radius !== 0 || spec.orbit.speed !== 0)) {
+            problems.push('STAR 类型的 orbit.radius 和 orbit.speed 必须都为 0');
         }
     }
-
-    // appearance
-    if (!spec.appearance || typeof spec.appearance !== 'object') {
-        errors.push('appearance 必须是对象');
-    } else {
-        const cr = spec.appearance.coreRadius;
-        if (typeof cr !== 'number' || cr < BUDGETS.CORE_RADIUS_MIN || cr > BUDGETS.CORE_RADIUS_MAX) {
-            errors.push(`appearance.coreRadius 必须在 [${BUDGETS.CORE_RADIUS_MIN}, ${BUDGETS.CORE_RADIUS_MAX}] 内,当前: ${cr}`);
-        }
-        const pb = spec.appearance.particleBudget;
-        if (typeof pb !== 'number' || pb > BUDGETS.MAX_PARTICLES_PER_PLANET) {
-            errors.push(`appearance.particleBudget 不得超过 ${BUDGETS.MAX_PARTICLES_PER_PLANET},当前: ${pb}`);
-        }
-        if (!Array.isArray(spec.appearance.palette) || spec.appearance.palette.length < 2) {
-            errors.push('appearance.palette 必须是 [主色hex, 辅色hex] 两个值');
-        }
+    if (!spec.appearance || !Array.isArray(spec.appearance.palette) || spec.appearance.palette.length === 0) {
+        problems.push('appearance.palette 必须是非空颜色数组');
     }
 
-    return errors;
+    if (problems.length > 0) {
+        throw new Error(`[PlanetSpec] spec "${spec && spec.name}" 校验失败:\n  - ${problems.join('\n  - ')}`);
+    }
+    return true;
 }
 
 /**
- * 运行时校验:factory() 返回值是否合法
- * 在装配阶段调用 factory() 后立即校验,确保对象真的能进场景
- * 用 isObject3D 标志判断,避免本文件强依赖 three
- * @param {*} obj - factory() 的返回值
- * @returns {string[]} errors
+ * 校验 factory() 的运行时输出(装配时调用)
+ * @param {*} obj
+ * @param {{name: string}} spec
  */
-export function validateFactoryOutput(obj) {
-    const errors = [];
-    if (!obj || obj.isObject3D !== true) {
-        errors.push('factory() 必须返回 THREE.Object3D 实例(带 isObject3D=true 标志)');
+export function validateFactoryOutput(obj, spec) {
+    const problems = [];
+
+    if (!(obj instanceof THREE.Object3D)) {
+        throw new Error(`[PlanetSpec] "${spec.name}" 的 factory() 必须返回 THREE.Object3D(通常是 THREE.Group)`);
     }
-    return errors;
+    if (obj.name !== spec.name) {
+        problems.push(`group.name("${obj.name}") 必须与 spec.name("${spec.name}") 一致`);
+    }
+    if (obj.position.lengthSq() !== 0) {
+        problems.push('group 必须以 (0,0,0) 为中心,轨道偏移由装配器处理,不要自己位移');
+    }
+
+    // 性能预算统计(装配时一次性检查,超限当场打回)
+    let particles = 0;
+    let renderables = 0;
+    obj.traverse((child) => {
+        if (child.geometry && child.geometry.attributes && child.geometry.attributes.position) {
+            renderables++;
+            particles += child.geometry.attributes.position.count;
+        }
+    });
+    if (particles > BUDGETS.maxParticles) {
+        problems.push(`粒子总数 ${particles} 超出预算 ${BUDGETS.maxParticles}(core 基准 16000),请降采样`);
+    }
+    if (renderables > BUDGETS.maxRenderables) {
+        problems.push(`可渲染对象 ${renderables} 个超出预算 ${BUDGETS.maxRenderables}(core 基准 3),请合并几何体`);
+    }
+
+    if (problems.length > 0) {
+        throw new Error(`[PlanetSpec] "${spec.name}" factory() 输出校验失败:\n  - ${problems.join('\n  - ')}`);
+    }
+    return true;
 }
 
-/**
- * 便捷断言:校验失败时抛错(装配阶段用)
- * @param {PlanetSpec} spec
- * @returns {PlanetSpec} spec 本身,便于链式调用
- * @throws {Error} 校验失败时抛出含所有错误的 Error
- */
+/** 校验 + 失败直接抛错(装配器用) */
 export function assertValidSpec(spec) {
-    const errors = validatePlanetSpec(spec);
-    if (errors.length > 0) {
-        throw new Error(`[PlanetSpec] ${spec.name || '(unnamed)'} 校验失败:\n  - ${errors.join('\n  - ')}`);
-    }
+    validatePlanetSpec(spec);
     return spec;
 }
