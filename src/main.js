@@ -1690,6 +1690,25 @@ function preloadAssets() {
 // ---------- 验证码 ----------
 let currentCaptchaId = '';
 
+// 本地降级验证码:静态托管(GitHub Pages)/后端未启动时前端自发自验,保证进入流程不被阻塞
+let localCaptchaAnswer = '';
+
+function generateLocalCaptcha() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    localCaptchaAnswer = code;
+    currentCaptchaId = 'local-' + Math.random().toString(36).slice(2);
+    captchaImg.innerHTML =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40" viewBox="0 0 120 40">' +
+        '<rect width="120" height="40" fill="#0d0d0d"/>' +
+        code.split('').map((c, i) =>
+            '<text x="' + (18 + i * 26) + '" y="28" fill="#ffaa00" font-size="22" font-family="monospace" text-anchor="middle"' +
+            ' transform="rotate(' + Math.floor(Math.random() * 24 - 12) + ' ' + (18 + i * 26) + ' 22)">' + c + '</text>'
+        ).join('') +
+        '</svg>';
+}
+
 async function refreshCaptcha() {
     captchaImg.innerHTML = '加载中';
     try {
@@ -1697,8 +1716,7 @@ async function refreshCaptcha() {
         currentCaptchaId = d.captchaId;
         captchaImg.innerHTML = d.svg;
     } catch (err) {
-        currentCaptchaId = '';
-        captchaImg.innerHTML = '加载失败';
+        generateLocalCaptcha(); // 无后端环境:前端自发自验,不阻塞进入
     }
 }
 captchaImg.addEventListener('click', refreshCaptcha);
@@ -1713,7 +1731,10 @@ function loadVisitStats() {
             entryStats.style.color = '#ffaa00';
         })
         .catch(() => {
-            entryStats.innerText = '统计服务未连接,请从 http://localhost:8080/galaxy.html 访问';
+            // 静态托管(Pages)与本地后端未启动,分别给出准确提示
+            entryStats.innerText = location.hostname.endsWith('github.io')
+                ? '离线模式:统计服务不可用,仍可正常进入体验'
+                : '统计服务未连接,请从 http://localhost:8080/galaxy.html 访问';
             entryStats.style.color = '#ff5555';
         });
 }
@@ -1745,6 +1766,22 @@ async function handleEnter() {
     if (!answer) {
         entryStatus.innerText = '请输入验证码';
         entryStatus.style.color = '#ff5555';
+        return;
+    }
+
+    // 本地降级验证码:前端自验后直接进入(静态托管/后端未启动环境)
+    if (currentCaptchaId.startsWith('local-')) {
+        if (answer !== localCaptchaAnswer) {
+            entryStatus.innerText = '验证码错误';
+            entryStatus.style.color = '#ff5555';
+            captchaInput.value = '';
+            generateLocalCaptcha();
+            return;
+        }
+        entryBtn.disabled = true;
+        entryStatus.innerText = '离线模式,进入星系...';
+        entryStatus.style.color = '#00ffcc';
+        enterGalaxy();
         return;
     }
 
