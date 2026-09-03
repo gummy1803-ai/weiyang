@@ -20,6 +20,7 @@ import io
 from flask import Flask, request, jsonify, send_from_directory
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, 'static')  # Web 资产目录(与 Streamlit Cloud 的 static/ 约定保持一致)
 DB_PATH = os.path.join(BASE_DIR, 'visits.db')
 PORT = 8080
 
@@ -56,19 +57,15 @@ def add_no_cache(response):
     response.headers['Expires'] = '0'
     return response
 
-# ── 静态文件托管 ──────────────────────────────────────────────────
+# ── 静态文件托管(static/ 目录;源码上层文件/数据库不可被下载) ──────────
 @app.route('/')
-@app.route('/galaxy.html')
-@app.route('/index.html')
-@app.route('/admin.html')
-def serve_index(path=''):
-    fname = path if path else 'galaxy.html'
-    return send_from_directory(BASE_DIR, fname)
+def serve_root():
+    return send_from_directory(STATIC_DIR, 'galaxy.html')
 
 @app.route('/<path:path>')
 def serve_static(path):
     # API 路由已在上方捕获,这里兜底
-    return send_from_directory(BASE_DIR, path)
+    return send_from_directory(STATIC_DIR, path)
 
 # ── API 路由 ──────────────────────────────────────────────────────
 @app.route('/api/stats', methods=['GET'])
