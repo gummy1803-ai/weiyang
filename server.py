@@ -20,9 +20,9 @@ import io
 from flask import Flask, request, jsonify, send_from_directory
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(BASE_DIR, 'static')  # Web 资产目录(与 Streamlit Cloud 的 static/ 约定保持一致)
+STATIC_DIR = os.path.join(BASE_DIR, 'static')  # Web 资产目录
 DB_PATH = os.path.join(BASE_DIR, 'visits.db')
-PORT = 8080
+PORT = int(os.environ.get('PORT', 8080))  # PaaS(Render 等)注入 PORT,本地默认 8080
 
 app = Flask(__name__, static_folder=None)
 
