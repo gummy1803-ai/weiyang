@@ -270,7 +270,7 @@ export const orionSpec = {
     name: 'orion',
     type: PlanetType.PLANET,
     factory: createOrionNebula,
-    orbit: { radius: 2800, speed: 0.0006, phase: Math.PI / 6 },  // 环4·30°(与螺旋星云同环,同速180°错相)
+    orbit: { radius: 2000, speed: 0.0007, phase: Math.PI + Math.PI / 6 },  // 环4·210°(与蜘蛛星云同环,180°错相)
     appearance: { palette: [0xff4466, 0x44cc77, 0x4488cc], supportsColorCustomization: false },
     info: {
         title: '猎户星云', subtitle: 'Orion Nebula (M42) · 恒星诞生区',

@@ -29,7 +29,7 @@ const CORE_CONFIG = {
 export function createCorePlanet() {
     const group = new THREE.Group();
     group.name = 'core';
-    group.scale.setScalar(2.2);  // 整体放大 2.2 倍(用户要求:恒星体积放大;走契约允许的 group.scale,不改粒子美术参数)
+    group.scale.setScalar(2.0);  // 体积 = 原始 2 倍(用户要求);本体 R=100、双环到 280
 
     // ---------- 星球本体(原版 202-240 行,逐行对应) ----------
     const planetGeo = new THREE.BufferGeometry();

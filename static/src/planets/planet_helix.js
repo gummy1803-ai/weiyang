@@ -198,7 +198,7 @@ export const helixSpec = {
     name: 'helix',
     type: PlanetType.PLANET,
     factory: createHelixNebula,
-    orbit: { radius: 2800, speed: 0.0006, phase: Math.PI + Math.PI / 6 },  // 环4·210°(与猎户星云同环,同速180°错相)
+    orbit: { radius: 2500, speed: 0.0005, phase: Math.PI / 2 },  // 环5·90°
     appearance: { palette: [0x44aacc, 0xff5533, 0xaa3366], supportsColorCustomization: false },
     info: {
         title: '螺旋星云', subtitle: 'Helix Nebula (NGC 7293) · 行星状星云',

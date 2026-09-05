@@ -257,7 +257,7 @@ export const velaSpec = {
     name: 'vela',
     type: PlanetType.PLANET,
     factory: createVelaNebula,
-    orbit: { radius: 2350, speed: 0.0007, phase: 2 * Math.PI / 3 },  // 环3·120°(与蜘蛛星云同环,同速180°错相)
+    orbit: { radius: 1500, speed: 0.0010, phase: Math.PI + 2 * Math.PI / 3 },  // 环3·300°(与船底座星云同环,180°错相)
     appearance: { palette: [0x44aacc, 0xff4433, 0x44cc88], supportsColorCustomization: false },
     info: {
         title: '船帆座星云', subtitle: 'Vela Supernova Remnant · 超新星遗迹',
