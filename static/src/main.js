@@ -15,7 +15,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { assertValidSpec, validateFactoryOutput } from './PlanetSpec.js';
-import { PLANET_SPECS } from './planets/index.js?v=20260902v3';
+import { PLANET_SPECS } from './planets/index.js?v=20260906v2';
 import { api } from './api.js';
 import { startEntryBackground, burstAndDestroy } from './entryBackground.js';
 
@@ -23,7 +23,7 @@ import { startEntryBackground, burstAndDestroy } from './entryBackground.js';
 const CONFIG = {
     minDistance: 120,
     defaultDistance: 300,
-    maxDistance: 2000,
+    maxDistance: 6000,   // 放大视距以容纳多颗星球
     rotationSpeedMultiplier: 0.08,  // 灵敏度提升(原版 0.05)
     fistAcceleration: 0.25,        // 握拳加速(原版 0.5)
     openLerpFactor: 0.04            // 张开靠近(原版 0.05)

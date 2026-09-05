@@ -10,23 +10,32 @@
 
 import { coreSpec } from './core.js?v=20260902v3';
 import { planet1Spec } from './planet1.js?v=20260902v4'; // 成员 B(黑洞行星)
+import { betelgeuseSpec } from './planet_betelgeuse.js?v=20260905v5'; // 参宿四 · 红超巨星
+import { saturnSpec } from './planet_saturn.js?v=20260906v1'; // 土星
+import { crabSpec } from './planet_crab.js?v=20260906v1'; // 蟹状星云
+import { rosetteSpec } from './planet_rosette.js?v=20260906v1'; // 玫瑰星云
+import { carinaSpec } from './planet_carina.js?v=20260906v1'; // 船底座星云
+import { velaSpec } from './planet_vela.js?v=20260906v1'; // 船帆座星云
+import { tarantulaSpec } from './planet_tarantula.js?v=20260906v2'; // 蜘蛛星云
+import { orionSpec } from './planet_orion.js?v=20260906v2'; // 猎户星云
+import { helixSpec } from './planet_helix.js?v=20260906v1'; // 螺旋星云
+import { phoenixASpec } from './planet_phoenixA.js?v=20260906v1'; // 凤凰座 A 星
 
-// DEBUG: 确认 planet1Spec 成功导入
-console.log('[planets/index] coreSpec.name =', coreSpec.name);
-console.log('[planets/index] planet1Spec.name =', planet1Spec.name);
-
-// 成员星球交付后取消注释:
-// import { starSpec } from './star.js';        // 成员 A(主星,若主星另行美化)
-// import { planet2Spec } from './planet2.js'; // 成员 C
-// import { planet3Spec } from './planet3.js'; // 成员 D
-// import { planet4Spec } from './planet4.js'; // 成员 E
+// DEBUG: 确认 spec 成功导入
+console.log('[planets/index] 已加载星球数量:', 12);
 
 // 最终装配清单(顺序 = 装配顺序)
 export const PLANET_SPECS = [
-    coreSpec,
-    planet1Spec,
-    // starSpec,
-    // planet2Spec,
-    // planet3Spec,
-    // planet4Spec,
+    coreSpec,           // 中心恒星 (orbit=0)
+    planet1Spec,        // GARGANTUA 黑洞 (orbit=550)
+    betelgeuseSpec,     // 参宿四 (orbit=1150)
+    saturnSpec,         // 土星 (orbit=1650)
+    crabSpec,           // 蟹状星云 (orbit=2150)
+    rosetteSpec,        // 玫瑰星云 (orbit=2650)
+    carinaSpec,         // 船底座星云 (orbit=3150)
+    velaSpec,           // 船帆座星云 (orbit=3650)
+    tarantulaSpec,      // 蜘蛛星云 (orbit=4150)
+    orionSpec,          // 猎户星云 (orbit=4650)
+    helixSpec,          // 螺旋星云 (orbit=5150)
+    phoenixASpec,       // 凤凰座 A 星 (orbit=5650)
 ];
