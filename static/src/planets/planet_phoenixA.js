@@ -195,7 +195,7 @@ export const phoenixASpec = {
     name: 'phoenixA',
     type: PlanetType.PLANET,
     factory: createPhoenixA,
-    orbit: { radius: 3200, speed: 0.0002 },  // 最外环
+    orbit: { radius: 3200, speed: 0.0005, phase: Math.PI / 2 },  // 最外环·90°
     appearance: { palette: [0xffaa44, 0xff8833, 0xffcc77], supportsColorCustomization: false },
     info: {
         title: '凤凰座 A 星', subtitle: 'Phoenix A · K 型橙巨星',

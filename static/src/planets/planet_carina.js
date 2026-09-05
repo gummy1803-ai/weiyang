@@ -267,7 +267,7 @@ export const carinaSpec = {
     name: 'carina',
     type: PlanetType.PLANET,
     factory: createCarinaNebula,
-    orbit: { radius: 1950, speed: 0.0003, phase: Math.PI },  // 环2·相位180°(与玫瑰星云共享轨道,同速180°错相)
+    orbit: { radius: 1950, speed: 0.0009, phase: Math.PI + Math.PI / 3 },  // 环2·240°(与玫瑰星云同环,同速180°错相)
     appearance: { palette: [0xff5566, 0x33aa66, 0x3366cc], supportsColorCustomization: false },
     info: {
         title: '船底座星云', subtitle: 'Carina Nebula (NGC 3372) · 恒星形成区',

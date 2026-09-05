@@ -290,7 +290,7 @@ export const saturnSpec = {
     name: 'saturn',
     type: PlanetType.PLANET,
     factory: createSaturn,
-    orbit: { radius: 1550, speed: 0.0004 },  // 环1·相位0°(与蟹状星云共享轨道,同速180°错相)
+    orbit: { radius: 1550, speed: 0.0012 },  // 环1·0°(与蟹状星云同环180°错相,同速)
     appearance: { palette: [0xddcc88, 0xccbb77, 0xaa9966], supportsColorCustomization: false },
     info: {
         title: '土星', subtitle: 'SATURN · 环系气态巨行星',

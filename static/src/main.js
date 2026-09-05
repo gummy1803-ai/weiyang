@@ -15,14 +15,14 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { assertValidSpec, validateFactoryOutput } from './PlanetSpec.js';
-import { PLANET_SPECS } from './planets/index.js?v=20260906v3';
+import { PLANET_SPECS } from './planets/index.js?v=20260906v4';
 import { api } from './api.js';
 import { startEntryBackground, burstAndDestroy } from './entryBackground.js';
 
 // ===== 配置(与原始 index.html 一致,除标注外) =====
 const CONFIG = {
     minDistance: 120,
-    defaultDistance: 300,
+    defaultDistance: 600, // 启动视角在主星(恒星放大2.2倍后,双环半径308需在此距离外才不被裁)
     maxDistance: 6500,   // 紧凑轨道布局(最外环3200)下,拉满即可一眼看全所有行星+星云
     rotationSpeedMultiplier: 0.08,  // 灵敏度提升(原版 0.05)
     fistAcceleration: 0.25,        // 握拳加速(原版 0.5)
