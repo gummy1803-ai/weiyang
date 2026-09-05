@@ -256,7 +256,7 @@ export const tarantulaSpec = {
     name: 'tarantula',
     type: PlanetType.PLANET,
     factory: createTarantulaNebula,
-    orbit: { radius: 1150, speed: 0.0007, phase: Math.PI / 6, inclination: 0.25, eccentricity: 0.40, ascendingNode: 1.5 },  // 环4·倾角14.3°
+    orbit: { radius: 1450, speed: 0.0007, phase: Math.PI / 6, inclination: 0.25, eccentricity: 0.40, ascendingNode: 1.5 },  // 环4·倾角14.3°
     appearance: { palette: [0xff3355, 0x44bb99, 0x3377cc], supportsColorCustomization: false },
     info: {
         title: '蜘蛛星云', subtitle: 'Tarantula Nebula (30 Doradus) · 恒星诞生巨厂',

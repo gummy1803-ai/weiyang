@@ -297,7 +297,7 @@ export const crabSpec = {
     name: 'crab',
     type: PlanetType.PLANET,
     factory: createCrabNebula,
-    orbit: { radius: 650, speed: 0.0015, phase: Math.PI / 3, inclination: 0.20, eccentricity: 0.30, ascendingNode: 2.1 },  // 环2·倾角11.5°
+    orbit: { radius: 750, speed: 0.0015, phase: Math.PI / 3, inclination: 0.20, eccentricity: 0.30, ascendingNode: 2.1 },  // 环2·倾角11.5°
     appearance: { palette: [0x88bbff, 0xff4433, 0x44cc66], supportsColorCustomization: false },
     info: {
         title: '蟹状星云', subtitle: 'Crab Nebula (M1) · 超新星遗迹',

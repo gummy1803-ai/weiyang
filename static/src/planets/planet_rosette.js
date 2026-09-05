@@ -210,7 +210,7 @@ export const rosetteSpec = {
     name: 'rosette',
     type: PlanetType.PLANET,
     factory: createRosetteNebula,
-    orbit: { radius: 650, speed: 0.0015, phase: Math.PI + Math.PI / 3, inclination: 0.15, eccentricity: 0.25, ascendingNode: 3.5 },  // 环2·倾角8.6°
+    orbit: { radius: 750, speed: 0.0015, phase: Math.PI + Math.PI / 3, inclination: 0.15, eccentricity: 0.25, ascendingNode: 3.5 },  // 环2·倾角8.6°
     appearance: { palette: [0xff5577, 0x3388aa, 0xffaa55], supportsColorCustomization: false },
     info: {
         title: '玫瑰星云', subtitle: 'Rosette Nebula (NGC 2237) · HII 发射星云',

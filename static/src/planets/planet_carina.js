@@ -267,7 +267,7 @@ export const carinaSpec = {
     name: 'carina',
     type: PlanetType.PLANET,
     factory: createCarinaNebula,
-    orbit: { radius: 900, speed: 0.0010, phase: 2 * Math.PI / 3, inclination: 0.10, eccentricity: 0.20, ascendingNode: 0.8 },  // 环3·倾角5.7°
+    orbit: { radius: 1100, speed: 0.0010, phase: 2 * Math.PI / 3, inclination: 0.10, eccentricity: 0.20, ascendingNode: 0.8 },  // 环3·倾角5.7°
     appearance: { palette: [0xff5566, 0x33aa66, 0x3366cc], supportsColorCustomization: false },
     info: {
         title: '船底座星云', subtitle: 'Carina Nebula (NGC 3372) · 恒星形成区',
