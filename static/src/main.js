@@ -15,7 +15,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { assertValidSpec, validateFactoryOutput } from './PlanetSpec.js';
-import { PLANET_SPECS } from './planets/index.js?v=20260906v2';
+import { PLANET_SPECS } from './planets/index.js?v=20260906v3';
 import { api } from './api.js';
 import { startEntryBackground, burstAndDestroy } from './entryBackground.js';
 
@@ -23,7 +23,7 @@ import { startEntryBackground, burstAndDestroy } from './entryBackground.js';
 const CONFIG = {
     minDistance: 120,
     defaultDistance: 300,
-    maxDistance: 6000,   // 放大视距以容纳多颗星球
+    maxDistance: 6500,   // 紧凑轨道布局(最外环3200)下,拉满即可一眼看全所有行星+星云
     rotationSpeedMultiplier: 0.08,  // 灵敏度提升(原版 0.05)
     fistAcceleration: 0.25,        // 握拳加速(原版 0.5)
     openLerpFactor: 0.04            // 张开靠近(原版 0.05)
@@ -70,9 +70,8 @@ function initThree() {
     const container = document.getElementById('canvas-container');
 
     scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x000000, 0.0005);
-
-    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 2000);
+    scene.fog = new THREE.FogExp2(0x000000, 0.00008);  // 稀雾:压轨道后远处星球不再被雾吞掉(原0.0005在3000+距离雾化89%)
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 15000);
     camera.position.set(0, 0, CONFIG.defaultDistance);
 
     renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
@@ -133,6 +132,7 @@ function assemblePlanets(specs) {
         const orbitGroup = new THREE.Group();
         orbitGroup.name = `orbit-${spec.name}`;
         obj.position.x = spec.orbit.radius;         // STAR 的 radius=0 → 居中
+        orbitGroup.rotation.y = spec.orbit.phase || 0; // 共享轨道初相位(星云与行星同环时错开,默认0)
         orbitGroup.add(obj);
         systemGroup.add(orbitGroup);
 
@@ -269,7 +269,7 @@ function createStarfield() {
     const geo = new THREE.BufferGeometry();
     const positions = [];
     for (let i = 0; i < 3000; i++) {
-        const r = 800 + Math.random() * 1500;
+        const r = 3500 + Math.random() * 3500;  // 星空壳在系统外围(最外轨道3200之外),包住整个行星系统
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos(2 * Math.random() - 1);
         positions.push(
