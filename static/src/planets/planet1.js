@@ -176,7 +176,7 @@ export const planet1Spec = {
     factory: createPlanet1,
     orbit: {
         radius: 2300,               // 最外环 · 系统边界天体(间距350均布)
-        speed: 0.0003,              // 开普勒:最远→最慢
+        speed: 0.0004,              // 开普勒:最远→最慢(×√2:恒星质量2倍)
         phase: Math.PI / 2,        // 90° 错开
         inclination: 0.35,          // 倾角 20°(黑洞轨道大幅倾斜,视觉醒目)
         eccentricity: 0.50,        // 偏心率 0.50(高偏心轨道,近星点远、远星点更远)

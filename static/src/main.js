@@ -15,7 +15,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { assertValidSpec, validateFactoryOutput } from './PlanetSpec.js';
-import { PLANET_SPECS } from './planets/index.js?v=20260906v8';
+import { PLANET_SPECS } from './planets/index.js?v=20260906v9';
 import { api } from './api.js';
 import { startEntryBackground, burstAndDestroy } from './entryBackground.js';
 
@@ -83,7 +83,7 @@ function initThree() {
     const renderScene = new RenderPass(scene, camera);
     const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
     bloomPass.threshold = 0;
-    bloomPass.strength = 2.0;
+    bloomPass.strength = 2.5;   // 恒星质量2倍→辐射更强,辉光增强(原2.0)
     bloomPass.radius = 0.5;
 
     composer = new EffectComposer(renderer);
