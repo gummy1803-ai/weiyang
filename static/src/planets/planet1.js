@@ -175,7 +175,7 @@ export const planet1Spec = {
     type: PlanetType.PLANET,
     factory: createPlanet1,
     orbit: {
-        radius: 3200,               // 最外环 · 系统边界天体(用户要求 GARGANTUA 放最外围)
+        radius: 1750,               // 最外环 · 系统边界天体(紧凑布局:原3200压缩至1750)
         speed: 0.0003,              // 开普勒:最远→最慢
         phase: Math.PI / 2,        // 90° 错开
         inclination: 0.35,          // 倾角 20°(黑洞轨道大幅倾斜,视觉醒目)

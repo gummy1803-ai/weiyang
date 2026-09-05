@@ -15,15 +15,15 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { assertValidSpec, validateFactoryOutput } from './PlanetSpec.js';
-import { PLANET_SPECS } from './planets/index.js?v=20260906v6';
+import { PLANET_SPECS } from './planets/index.js?v=20260906v7';
 import { api } from './api.js';
 import { startEntryBackground, burstAndDestroy } from './entryBackground.js';
 
 // ===== 配置(与原始 index.html 一致,除标注外) =====
 const CONFIG = {
     minDistance: 120,
-    defaultDistance: 600, // 启动视角在主星(恒星放大2.2倍后,双环半径308需在此距离外才不被裁)
-    maxDistance: 6500,   // 紧凑轨道布局(最外环3200)下,拉满即可一眼看全所有行星+星云
+    defaultDistance: 350, // 启动视角:恒星2.0x(双环280)外即可,紧凑布局最近环400
+    maxDistance: 3000,    // 紧凑布局最外环1750,拉满一眼看全
     rotationSpeedMultiplier: 0.08,  // 灵敏度提升(原版 0.05)
     fistAcceleration: 0.25,        // 握拳加速(原版 0.5)
     openLerpFactor: 0.04            // 张开靠近(原版 0.05)
@@ -282,7 +282,7 @@ function createStarfield() {
     const geo = new THREE.BufferGeometry();
     const positions = [];
     for (let i = 0; i < 3000; i++) {
-        const r = 3500 + Math.random() * 3500;  // 星空壳在系统外围(最外轨道3200之外),包住整个行星系统
+        const r = 2000 + Math.random() * 1500;  // 星空壳在紧凑系统外围(最外轨道1750之外)
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos(2 * Math.random() - 1);
         positions.push(

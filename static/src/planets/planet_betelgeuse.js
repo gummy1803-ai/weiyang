@@ -277,7 +277,7 @@ export const betelgeuseSpec = {
     name: 'betelgeuse',
     type: PlanetType.PLANET,
     factory: createBetelgeuse,
-    orbit: { radius: 550, speed: 0.0020, phase: Math.PI / 4, inclination: 0.12, eccentricity: 0.15, ascendingNode: 0.3 },  // 倾角6.9°,偏心率0.15
+    orbit: { radius: 400, speed: 0.0020, phase: Math.PI / 4, inclination: 0.12, eccentricity: 0.15, ascendingNode: 0.3 },  // 环1·倾角6.9°
     appearance: { palette: [0xff4422, 0xff7744, 0xdd5533], supportsColorCustomization: false },
     info: {
         title: '参宿四', subtitle: 'BETELGEUSE · 红超巨星',
