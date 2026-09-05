@@ -8,18 +8,18 @@
 //   2. 在下方取消对应注释(或仿写两行)
 //   3. 本地起服务器打开 galaxy.html,控制台无 [PlanetSpec] 报错即对接成功
 
-import { coreSpec } from './core.js?v=20260906v5';
-import { planet1Spec } from './planet1.js?v=20260906v5'; // GARGANTUA 黑洞
-import { betelgeuseSpec } from './planet_betelgeuse.js?v=20260906v5'; // 参宿四
-import { saturnSpec } from './planet_saturn.js?v=20260906v5'; // 土星
-import { crabSpec } from './planet_crab.js?v=20260906v5'; // 蟹状星云
-import { rosetteSpec } from './planet_rosette.js?v=20260906v5'; // 玫瑰星云
-import { carinaSpec } from './planet_carina.js?v=20260906v5'; // 船底座星云
-import { velaSpec } from './planet_vela.js?v=20260906v5'; // 船帆座星云
-import { tarantulaSpec } from './planet_tarantula.js?v=20260906v5'; // 蜘蛛星云
-import { orionSpec } from './planet_orion.js?v=20260906v5'; // 猎户星云
-import { helixSpec } from './planet_helix.js?v=20260906v5'; // 螺旋星云
-import { phoenixASpec } from './planet_phoenixA.js?v=20260906v5'; // 凤凰座 A 星
+import { coreSpec } from './core.js?v=20260906v6';
+import { planet1Spec } from './planet1.js?v=20260906v6'; // GARGANTUA 黑洞
+import { betelgeuseSpec } from './planet_betelgeuse.js?v=20260906v6'; // 参宿四
+import { saturnSpec } from './planet_saturn.js?v=20260906v6'; // 土星
+import { crabSpec } from './planet_crab.js?v=20260906v6'; // 蟹状星云
+import { rosetteSpec } from './planet_rosette.js?v=20260906v6'; // 玫瑰星云
+import { carinaSpec } from './planet_carina.js?v=20260906v6'; // 船底座星云
+import { velaSpec } from './planet_vela.js?v=20260906v6'; // 船帆座星云
+import { tarantulaSpec } from './planet_tarantula.js?v=20260906v6'; // 蜘蛛星云
+import { orionSpec } from './planet_orion.js?v=20260906v6'; // 猎户星云
+import { helixSpec } from './planet_helix.js?v=20260906v6'; // 螺旋星云
+import { phoenixASpec } from './planet_phoenixA.js?v=20260906v6'; // 凤凰座 A 星
 
 // DEBUG: 确认 spec 成功导入
 console.log('[planets/index] 已加载星球数量:', 12);

@@ -177,7 +177,10 @@ export const planet1Spec = {
     orbit: {
         radius: 3200,               // 最外环 · 系统边界天体(用户要求 GARGANTUA 放最外围)
         speed: 0.0003,              // 开普勒:最远→最慢
-        phase: Math.PI / 2          // 90° 错开
+        phase: Math.PI / 2,        // 90° 错开
+        inclination: 0.35,          // 倾角 20°(黑洞轨道大幅倾斜,视觉醒目)
+        eccentricity: 0.50,        // 偏心率 0.50(高偏心轨道,近星点远、远星点更远)
+        ascendingNode: 1.0          // 升交点方向独立
     },
     appearance: {
         palette: [0x000000, 0xffeeaa, 0xffcc66],

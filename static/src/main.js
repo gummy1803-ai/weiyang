@@ -15,7 +15,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { assertValidSpec, validateFactoryOutput } from './PlanetSpec.js';
-import { PLANET_SPECS } from './planets/index.js?v=20260906v5';
+import { PLANET_SPECS } from './planets/index.js?v=20260906v6';
 import { api } from './api.js';
 import { startEntryBackground, burstAndDestroy } from './entryBackground.js';
 
@@ -126,18 +126,31 @@ function assemblePlanets(specs) {
         const obj = spec.factory();                 // 调工厂生成星球
         validateFactoryOutput(obj, spec);           // 运行时校验
 
-        // 轨道挂载:orbitGroup 固定在星系中心,星球本体偏移 orbit.radius
-        // → animate 中 orbitGroup.rotation.y += speed 即绕恒星公转
-        // (旧实现 orbitGroup.position.x=radius + 自转 → 星球只原地自旋,从不绕恒星公转)
+        // 轨道挂载:tiltGroup 提供轨道倾角,orbitGroup 内行星沿椭圆运动
+        // 倾角(inclination) + 升交点经度(ascendingNode) 使各轨道不再共面
+        // 偏心率(eccentricity) 使轨道从圆变为椭圆,恒星位于椭圆焦点
+        const tiltGroup = new THREE.Group();
+        tiltGroup.name = `tilt-${spec.name}`;
+        const inc  = spec.orbit.inclination || 0;     // 轨道倾角(弧度)
+        const node = spec.orbit.ascendingNode || 0;   // 升交点经度(弧度)
+        tiltGroup.rotation.y = node;                  // 先定向升交点
+        tiltGroup.rotation.x = inc;                   // 再倾斜轨道面
+
         const orbitGroup = new THREE.Group();
         orbitGroup.name = `orbit-${spec.name}`;
-        obj.position.x = spec.orbit.radius;         // STAR 的 radius=0 → 居中
-        orbitGroup.rotation.y = spec.orbit.phase || 0; // 共享轨道初相位(星云与行星同环时错开,默认0)
         orbitGroup.add(obj);
-        systemGroup.add(orbitGroup);
+        tiltGroup.add(orbitGroup);
+        systemGroup.add(tiltGroup);
 
-        planetInstances.push({ spec, orbitGroup, obj });
-        console.log(`[装配] ${spec.name}(${spec.type}) → 轨道半径 ${spec.orbit.radius}`);
+        // 椭圆初始位置(近星点):e=0 时退化为圆
+        const e = spec.orbit.eccentricity || 0;
+        const a = spec.orbit.radius;
+        if (a > 0) {
+            obj.position.x = a * (1 - e);              // 近星点距 = a(1-e)
+        }
+
+        planetInstances.push({ spec, orbitGroup, tiltGroup, obj, angle: spec.orbit.phase || 0 });
+        console.log(`[装配] ${spec.name}(${spec.type}) → 轨道半径 ${a}, 倾角 ${(inc * 180 / Math.PI).toFixed(1)}°, 偏心率 ${e}`);
     });
 
     // 队友 Downloads/index.html 第 932-1053 行的轨道带 + 星空背景
@@ -1449,10 +1462,20 @@ function animate() {
     if (starfield) starfield.rotation.y += 0.0002;
 
     // 星球自转/星环差速:由各星球模块自带的 tick 钩子驱动
-    // 公转:orbitGroup 旋转,STAR 的 speed=0 自动静止
-    planetInstances.forEach(({ spec, orbitGroup, obj }) => {
+    // 公转:每帧按角度计算椭圆位置(e=0 退化为圆),恒星位于椭圆焦点
+    planetInstances.forEach((inst) => {
+        const { spec, obj } = inst;
         if (spec.orbit.speed !== 0) {
-            orbitGroup.rotation.y += spec.orbit.speed;
+            inst.angle += spec.orbit.speed;
+        }
+        // 椭圆参数方程: x = a·cos θ - c, z = b·sin θ (c = a·e, 恒星在焦点)
+        const a = spec.orbit.radius;
+        if (a > 0 && spec.orbit.speed !== 0) {
+            const e = spec.orbit.eccentricity || 0;
+            const b = a * Math.sqrt(1 - e * e);
+            const c = a * e;
+            obj.position.x = a * Math.cos(inst.angle) - c;
+            obj.position.z = b * Math.sin(inst.angle);
         }
         if (obj.userData.tick) {
             obj.userData.tick(time);

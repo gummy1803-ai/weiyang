@@ -49,9 +49,12 @@ export const PlanetType = {
  *   type: PlanetType.PLANET,          // PlanetType 枚举
  *   factory: createPlanet1,           // () => THREE.Group,内含星球全部美术
  *   orbit: {                          // 轨道参数(STAR 必须全 0)
- *     radius: 0,                      //   轨道半径(到中心的距离),>=0
- *     speed: 0,                       //   公转角速度(弧度/帧)
- *     phase: 0                        //   可选:初始相位角(弧度),共享轨道环时用于错开天体
+ *     radius: 0,                      //   半长轴(到中心焦点的平均距离),>=0
+ *     speed: 0,                       //   公转角速度(弧度/帧,内环快外环慢·开普勒)
+ *     phase: 0,                       //   可选:初始相位角(弧度),共享轨道环时用于错开天体
+ *     inclination: 0,                 //   可选:轨道倾角(弧度),0=共面,正值倾斜(真实行星 0~0.5)
+ *     eccentricity: 0,               //   可选:偏心率,0=正圆,0~1椭圆(真实行星 0.007~0.21)
+ *     ascendingNode: 0               //   可选:升交点经度(弧度),控制倾角方向,各星不同避免共面
  *   },
  *   appearance: {
  *     palette: [0xff6600, 0xffffff],  // 本星球使用的颜色表(供检索/调试)
