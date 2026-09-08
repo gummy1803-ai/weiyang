@@ -20,9 +20,10 @@ import { tarantulaSpec } from './planet_tarantula.js?v=20260906v9'; // 蜘蛛星
 import { orionSpec } from './planet_orion.js?v=20260906v9'; // 猎户星云
 import { helixSpec } from './planet_helix.js?v=20260906v9'; // 螺旋星云
 import { phoenixASpec } from './planet_phoenixA.js?v=20260906v9'; // 凤凰座 A 星
+import { asteroidBeltSpec } from './planet_asteroidBelt.js?v=20260906v18'; // 小行星带(蜘蛛星云与 GARGANTUA 间隙) - 30016 颗
 
 // DEBUG: 确认 spec 成功导入
-console.log('[planets/index] 已加载星球数量:', 12);
+console.log('[planets/index] 已加载星球数量:', 13);
 
 // 最终装配清单(顺序 = 装配顺序)
 // GARGANTUA 置于最外环(3200)作为系统边界天体;其余 10 颗补位 550~2500 五环
@@ -40,5 +41,6 @@ export const PLANET_SPECS = [
     orionSpec,          // 猎户星云 (环4 orbit=2000, 210°)
     helixSpec,          // 螺旋星云 (环5 orbit=2500, 90°)
     phoenixASpec,       // 凤凰座 A 星 (环5 orbit=2500, 270°)
+    asteroidBeltSpec,   // 小行星带 (distance 1600~2150, 固定原点) — 蜘蛛星云与 GARGANTUA 间隙
     planet1Spec,        // GARGANTUA (最外环 orbit=3200, 90°) — 系统边界天体
 ];

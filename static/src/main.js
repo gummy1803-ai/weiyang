@@ -15,7 +15,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { assertValidSpec, validateFactoryOutput } from './PlanetSpec.js';
-import { PLANET_SPECS } from './planets/index.js?v=20260906v9';
+import { PLANET_SPECS } from './planets/index.js?v=20260906v15';
 import { api } from './api.js';
 import { startEntryBackground, burstAndDestroy } from './entryBackground.js';
 
@@ -413,8 +413,14 @@ function setGargantuaHints(on) {
 function getCameraCenter(out) {
     if (cameraCenterIndex >= 0) {
         const inst = planetInstances[cameraCenterIndex];
-        if (inst && inst.spec.orbit.radius > 0) {
-            return inst.obj.getWorldPosition(out);
+        if (inst) {
+            // orbit.radius=0 的天体(如小行星带):用 clickTarget 世界位置作为轴心
+            if (inst.spec.orbit.radius === 0 && inst.obj.userData.clickTarget) {
+                return inst.obj.userData.clickTarget.getWorldPosition(out);
+            }
+            if (inst.spec.orbit.radius > 0) {
+                return inst.obj.getWorldPosition(out);
+            }
         }
         cameraCenterIndex = -1;
     }
@@ -424,8 +430,16 @@ function getCameraCenter(out) {
 /** 聚焦动画结束:轴心切到被选行星。相机世界位置不动,仅重算"行星基准"的球坐标 */
 function anchorCameraToPlanet(idx) {
     const inst = planetInstances[idx];
-    if (!inst || inst.spec.orbit.radius <= 0) { cameraCenterIndex = -1; return; }
-    const center = inst.obj.getWorldPosition(new THREE.Vector3());
+    if (!inst) { cameraCenterIndex = -1; return; }
+    // orbit.radius=0 的天体(如小行星带):用 clickTarget 世界位置作为轴心
+    const center = new THREE.Vector3();
+    if (inst.spec.orbit.radius === 0 && inst.obj.userData.clickTarget) {
+        inst.obj.userData.clickTarget.getWorldPosition(center);
+    } else if (inst.spec.orbit.radius > 0) {
+        inst.obj.getWorldPosition(center);
+    } else {
+        cameraCenterIndex = -1; return;
+    }
     const offset = camera.position.clone().sub(center);
     const len = offset.length();
     if (len < 1) { cameraCenterIndex = -1; return; }
@@ -468,12 +482,20 @@ function focusOnPlanet(planetIndex) {
     const worldPos = new THREE.Vector3();
     inst.obj.getWorldPosition(worldPos);
 
+    // 特殊处理:orbit.radius=0 的天体(如小行星带,Group 固定原点但内容分布在远处)
+    // → 用 clickTarget 的世界位置作为聚焦锚点(已由各星球工厂设置在合理位置)
+    if (inst.spec.orbit.radius === 0 && inst.obj.userData.clickTarget) {
+        inst.obj.userData.clickTarget.getWorldPosition(worldPos);
+    }
+
     // 目标相机位置:停在行星外侧的安全观察距离,禁止怼进行星中心区域
     // (黑洞 R=30、吸积盘外缘~100:相机距行星 300 → 外部特征/吸积盘完整可见;
     //  旧公式 max(orbit.radius,180) 会让相机正好落在行星位置上,穿进吸积盘内部)
     const orbitR = inst.spec.orbit.radius;
-    const targetRadius = orbitR > 0
-        ? Math.min(orbitR + 300, CONFIG.maxDistance)
+    // 对 orbit.radius=0 的天体,用 worldPos 到原点的距离作为基准
+    const effectiveR = orbitR > 0 ? orbitR : worldPos.length();
+    const targetRadius = effectiveR > 0
+        ? Math.min(effectiveR + 300, CONFIG.maxDistance)
         : CONFIG.defaultDistance;
 
     // 球坐标转换:根据行星世界位置推导期望的 theta/phi
