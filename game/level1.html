@@ -1,0 +1,1122 @@
+File content truncated due to size limit (50KB). First 50KB included below:
+
+   1→<!DOCTYPE html>
+   2→<html lang="zh">
+   3→<head>
+   4→<meta charset="UTF-8">
+   5→<meta name="viewport" content="width=device-width,initial-scale=1">
+   6→<title>第1关 · 三道密码锁 · 离谱星际穿越</title>
+   7→<style>
+   8→:root{
+   9→    --bg:#0a0a14;
+  10→    --panel:rgba(15,15,25,0.85);
+  11→    --border:rgba(255,255,255,0.08);
+  12→    --amber:#fbbf24;
+  13→    --coral:#f87171;
+  14→    --rose:#f472b6;
+  15→    --teal:#2dd4bf;
+  16→    --green:#22c55e;
+  17→    --red:#ef4444;
+  18→    --cream:#fef3c7;
+  19→    --muted:#6b7280;
+  20→}
+  21→
+  22→*{margin:0;padding:0;box-sizing:border-box}
+  23→body{background:var(--bg);overflow:hidden;font-family:"PingFang SC","Microsoft YaHei",sans-serif;color:var(--cream);user-select:none;-webkit-user-select:none}
+  24→canvas{display:block}
+  25→a{color:inherit}
+  26→
+  27→/* View switching */
+  28→.view{position:absolute;inset:0;overflow:hidden}
+  29→
+  30→/* Game canvas common */
+  31→.game-canvas{position:absolute;inset:0;width:100%;height:100%}
+  32→
+  33→/* Animation slot */
+  34→.anim-slot{position:absolute;inset:0;z-index:50;display:none}
+  35→.anim-slot.anim-active{display:block}
+  36→.anim-wrapper{position:relative;width:100%;height:100%;background:#000}
+  37→.anim-video{width:100%;height:100%;object-fit:contain}
+  38→.anim-subtitle{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);padding:6px 16px;border-radius:8px;font-size:14px;color:rgba(255,255,255,0.85)}
+  39→.anim-skip{position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);padding:6px 16px;border-radius:8px;font-size:13px;cursor:pointer;transition:all .2s}
+  40→.anim-skip:hover{background:rgba(255,255,255,0.15);color:#fff}
+  41→
+  42→/* Common panels (converted from ID to class) */
+  43→.tangbao-panel{position:absolute;top:20px;right:20px;width:220px;background:var(--panel);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);z-index:15}
+  44→.tangbao-title{font-size:11px;font-weight:700;color:var(--amber);padding:8px 14px;border-bottom:1px solid var(--border);letter-spacing:1px}
+  45→.tangbao-body{padding:10px 14px;font-size:11px;line-height:1.7;color:var(--cream);min-height:30px}
+  46→
+  47→.hp-bar{position:absolute;top:20px;left:20px;width:200px;z-index:15}
+  48→.hp-label{font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:1px}
+  49→.hp-track{height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden}
+  50→.hp-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--amber));border-radius:4px;transition:width .3s;width:100%}
+  51→.hp-fill.low{background:linear-gradient(90deg,var(--red),var(--coral))}
+  52→
+  53→.progress-bar{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:300px;z-index:15}
+  54→.progress-label{font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:1px;text-align:center}
+  55→.progress-track{height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden}
+  56→.progress-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--amber));border-radius:3px;transition:width .3s;width:0%}
+  57→
+  58→/* Dialog (converted from ID to class) */
+  59→.dialog-overlay{position:absolute;inset:0;z-index:20;display:none}
+  60→.dialog-overlay.show{display:flex;align-items:center;justify-content:center}
+  61→.dialog-box{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px 32px;max-width:600px;width:90%;backdrop-filter:blur(12px);cursor:pointer}
+  62→.dialog-speaker{font-size:12px;font-weight:700;margin-bottom:8px}
+  63→.dialog-text{font-size:15px;line-height:1.8;color:var(--cream)}
+  64→.dialog-hint{text-align:right;font-size:10px;color:var(--muted);margin-top:12px;animation:pulse 1.5s infinite}
+  65→@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}
+  66→
+  67→/* Pass/Fail screens (already class-based) */
+  68→.pass-screen,.fail-screen{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,0.9);opacity:0;pointer-events:none;transition:opacity .5s}
+  69→.pass-screen.show,.fail-screen.show{opacity:1;pointer-events:auto}
+  70→.pass-screen .title{font-size:36px;font-weight:800;background:linear-gradient(135deg,var(--amber),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:6px;margin-bottom:12px}
+  71→.fail-screen .title{font-size:36px;font-weight:800;color:var(--red);letter-spacing:6px;margin-bottom:12px}
+  72→.pass-screen .sub,.fail-screen .sub{font-size:13px;color:var(--muted);margin-bottom:30px;letter-spacing:2px}
+  73→.pass-screen button,.fail-screen button{padding:12px 36px;background:transparent;border:1.5px solid var(--amber);border-radius:10px;color:var(--amber);font-size:14px;cursor:pointer;transition:all .25s;letter-spacing:2px}
+  74→.pass-screen button:hover,.fail-screen button:hover{background:var(--amber);color:#000;transform:scale(1.05)}
+  75→
+  76→/* Screen flash (converted from ID to class) */
+  77→.screen-flash{position:absolute;inset:0;pointer-events:none;z-index:25;opacity:0;transition:opacity .3s}
+  78→
+  79→/* Key hint */
+  80→kbd{display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:4px;font-size:11px;font-family:monospace}
+  81→
+  82→/* ===== 第1关专属样式(三道密码锁) ===== */
+  83→/* ================================================================
+  84→   LEVEL 1 INLINE STYLES (IDs prefixed with l1-) - 3-stage lock
+  85→   ================================================================ */
+  86→#l1-stage-info{position:absolute;top:20px;left:50%;transform:translateX(-50%);z-index:15;display:flex;gap:12px;align-items:center}
+  87→.l1-stage-badge{padding:6px 16px;border:1.5px solid var(--border);border-radius:20px;font-size:11px;color:var(--muted);letter-spacing:2px;transition:all .3s}
+  88→.l1-stage-badge.active{border-color:var(--amber);color:var(--amber);background:rgba(251,191,36,0.08);box-shadow:0 0 10px rgba(251,191,36,0.2)}
+  89→.l1-stage-badge.done{border-color:var(--green);color:var(--green);background:rgba(34,197,94,0.08)}
+  90→
+  91→/* --- Stage 1: Safe Cracking --- */
+  92→#l1-safe-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10;display:none}
+  93→#l1-safe-panel.show{display:block}
+  94→.l1-safe-title{display:none}
+  95→#l1-safe-target{font-size:22px;color:var(--green);text-align:center;margin-bottom:16px;letter-spacing:2px}
+  96→#l1-safe-target-char{display:inline-block;font-size:44px;font-weight:900;color:#22c55e;background:rgba(34,197,94,0.1);border:2px solid rgba(34,197,94,0.5);border-radius:12px;padding:4px 24px;margin-left:8px;font-family:monospace;text-shadow:0 0 10px rgba(34,197,94,0.5)}
+  97→#l1-safe-grid-wrap{background:rgba(0,0,0,0.7);border:2px solid var(--border);border-radius:16px;padding:0;position:relative;overflow:hidden;margin:0 auto}
+  98→#l1-safe-grid-canvas{display:block;width:100%;height:100%}
+  99→.l1-safe-hint{font-size:15px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.6}
+ 100→#l1-safe-locked{display:flex;gap:10px;justify-content:center;margin-top:16px}
+ 101→.l1-safe-char{width:56px;height:56px;border:2px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;font-family:monospace;color:var(--muted)}
+ 102→.l1-safe-char.filled{border-color:var(--green);color:var(--green)}
+ 103→.l1-safe-char.current{border-color:var(--amber);animation:l1currentPulse 1s infinite}
+ 104→
+ 105→/* --- Stage 2: Morse Code Lock --- */
+ 106→#l1-morse-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(78vw,1280px);max-height:94vh;overflow-y:auto;z-index:10;display:none;text-align:center}
+ 107→#l1-morse-panel.show{display:block}
+ 108→.l1-morse-title{font-size:20px;color:var(--amber);letter-spacing:4px;margin-bottom:12px}
+ 109→/* 左右分栏: 左=已获取密码+破译线索框, 右=密码键盘(同图一) */
+ 110→.l1-morse-body{display:flex;gap:20px;align-items:stretch;justify-content:center;text-align:left}
+ 111→.l1-morse-left{flex:1.35;min-width:0;display:flex;flex-direction:column;gap:12px}
+ 112→.l1-morse-right{flex:1;min-width:0;display:flex;flex-direction:column}
+ 113→#l1-morse-display{display:flex;align-items:stretch;justify-content:flex-start;gap:10px;flex-wrap:wrap}
+ 114→.l1-morse-card{background:rgba(0,0,0,0.5);border:2px solid var(--border);border-radius:10px;padding:10px 12px;flex:1;min-width:100px;display:flex;flex-direction:column;align-items:center;gap:6px;transition:all .2s}
+ 115→.l1-morse-card.active{border-color:var(--amber);box-shadow:0 0 12px rgba(251,191,36,0.3);background:rgba(251,191,36,0.05)}
+ 116→.l1-morse-card.done{border-color:var(--green);background:rgba(34,197,94,0.06)}
+ 117→.l1-morse-card-label{font-size:11px;color:var(--muted);letter-spacing:1px}
+ 118→.l1-morse-card.active .l1-morse-card-label{color:var(--amber)}
+ 119→.l1-morse-card.done .l1-morse-card-label{color:var(--green)}
+ 120→.l1-morse-pattern{display:flex;align-items:center;gap:4px;min-height:18px;flex-wrap:wrap;justify-content:center}
+ 121→.l1-morse-dot{width:11px;height:11px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(34,197,94,0.5);flex-shrink:0}
+ 122→.l1-morse-dash{width:28px;height:11px;border-radius:6px;background:var(--green);box-shadow:0 0 6px rgba(34,197,94,0.5);flex-shrink:0}
+ 123→.l1-morse-card-filled{font-size:26px;font-weight:900;color:var(--green);font-family:monospace;line-height:1}
+ 124→@keyframes l1shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+ 125→/* 右侧电话式键盘 3 列 */
+ 126→#l1-morse-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;flex:1;grid-auto-rows:1fr}
+ 127→.l1-morse-key{padding:0;border:1.5px solid var(--border);border-radius:10px;background:rgba(255,255,255,0.04);color:var(--cream);font-size:26px;font-weight:700;cursor:pointer;transition:all .15s;text-align:center;display:flex;align-items:center;justify-content:center;min-height:58px}
+ 128→.l1-morse-key:hover{border-color:var(--amber);background:rgba(251,191,36,0.08);transform:translateY(-2px)}
+ 129→.l1-morse-key:active{transform:translateY(0)}
+ 130→.l1-morse-key.special{color:var(--amber);font-size:20px}
+ 131→/* 破译线索:专门框起来(2列网格,每格 摩斯符号+数字) */
+ 132→.l1-morse-ref{border:1.5px solid rgba(251,191,36,0.35);border-radius:12px;padding:12px 16px;background:rgba(0,0,0,0.35);text-align:left;flex:1}
+ 133→.l1-morse-ref-title{font-size:14px;font-weight:700;color:var(--amber);letter-spacing:2px;margin-bottom:8px}
+ 134→.l1-morse-ref-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+ 135→.l1-morse-ref-cell{display:flex;align-items:center;justify-content:space-between;gap:10px;border-radius:6px;padding:10px 14px;background:rgba(120,140,165,0.16)}
+ 136→.l1-morse-ref-cell .mr-sym{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+ 137→.l1-morse-ref-cell .mr-slot{width:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+ 138→.mr-dot{width:13px;height:13px;border-radius:50%;background:rgba(206,220,232,0.9);box-shadow:0 0 4px rgba(180,200,220,0.35)}
+ 139→.mr-dash{width:22px;height:8px;border-radius:4px;background:rgba(206,220,232,0.9);box-shadow:0 0 4px rgba(180,200,220,0.35)}
+ 140→.l1-morse-ref-cell .mn{font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:28px;font-weight:300;color:rgba(228,236,244,0.92);line-height:1;min-width:28px;text-align:right;flex-shrink:0}
+ 141→
+ 142→/* --- Stage 3: Fixed Password --- */
+ 143→#l1-fixed-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:420px;max-width:94vw;z-index:10;display:none;text-align:center}
+ 144→#l1-fixed-panel.show{display:block}
+ 145→.l1-fixed-title{font-size:14px;color:var(--amber);letter-spacing:3px;margin-bottom:10px}
+ 146→.l1-fixed-clue{background:rgba(0,0,0,0.5);border:1.5px solid rgba(251,191,36,0.3);border-radius:12px;padding:14px 20px;margin-bottom:16px}
+ 147→#l1-fixed-display{display:flex;gap:10px;justify-content:center;margin-bottom:16px}
+ 148→.l1-fixed-box{width:48px;height:60px;border:2px solid var(--border);border-radius:12px;background:rgba(0,0,0,0.5);font-size:26px;font-weight:700;color:var(--cream);text-align:center;display:flex;align-items:center;justify-content:center;font-family:monospace;transition:all .2s}
+ 149→.l1-fixed-box.active{border-color:var(--amber);box-shadow:0 0 12px rgba(251,191,36,0.3)}
+ 150→.l1-fixed-box.filled{border-color:var(--teal);color:var(--teal)}
+ 151→.l1-fixed-box.correct{border-color:var(--green);color:var(--green);background:rgba(34,197,94,0.08)}
+ 152→.l1-fixed-box.wrong{border-color:var(--red);color:var(--red);animation:l1shake .3s}
+ 153→#l1-fixed-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:280px;margin:0 auto}
+ 154→.l1-fixed-key{padding:13px 0;border:1.5px solid var(--border);border-radius:10px;background:rgba(255,255,255,0.04);color:var(--cream);font-size:18px;font-weight:700;cursor:pointer;transition:all .15s;text-align:center}
+ 155→.l1-fixed-key:hover{border-color:var(--amber);background:rgba(251,191,36,0.08);transform:translateY(-2px)}
+ 156→.l1-fixed-key:active{transform:translateY(0)}
+ 157→.l1-fixed-key.special{color:var(--amber);font-size:14px}
+ 158→.l1-fixed-clue{background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.15);border-radius:8px;padding:8px 14px;margin-top:14px;font-size:12px;color:var(--amber);text-align:center;min-height:20px}
+ 159→
+ 160→/* --- Common --- */
+ 161→.l1-flash-correct{position:absolute;inset:0;background:rgba(34,197,94,0.15);z-index:5;pointer-events:none;opacity:0;transition:opacity .3s}
+ 162→.l1-flash-correct.show{opacity:1}
+ 163→.l1-flash-wrong{position:absolute;inset:0;background:rgba(239,68,68,0.15);z-index:5;pointer-events:none;opacity:0;transition:opacity .3s}
+ 164→.l1-flash-wrong.show{opacity:1}
+ 165→
+ 166→</style>
+ 167→</head>
+ 168→<body>
+ 169→<div style="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:999;display:none;gap:8px;font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:12px;letter-spacing:1px;white-space:nowrap"><a href="level1.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);background:rgba(251,191,36,0.22);border-color:#fbbf24;color:#fbbf24;font-weight:700;">1·三道密码锁</a><a href="level2.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">2·星际海盗战</a><a href="level3.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">3·离谱星人盘问</a><a href="level4.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">4·穿越小行星带</a></div>
+<div id="skip-btn" onclick="location.href='level2.html'" style="position:fixed;top:12px;right:12px;z-index:9999;padding:6px 14px;border:1.5px solid rgba(251,191,36,0.6);border-radius:18px;background:rgba(15,15,25,0.75);backdrop-filter:blur(8px);color:#fbbf24;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:2px;user-select:none;-webkit-tap-highlight-color:transparent;box-shadow:0 0 12px rgba(251,191,36,0.2);">跳过本关 ⏭</div>
+ 170→<div id="view-level1" class="view" style="display:none">
+ 171→    <canvas id="canvas-l1" class="game-canvas"></canvas>
+ 172→    <div id="l1-screen-flash" class="screen-flash"></div>
+ 173→    <div class="l1-flash-correct" id="l1-flash-correct"></div>
+ 174→    <div class="l1-flash-wrong" id="l1-flash-wrong"></div>
+ 175→
+ 176→    <div id="l1-anim-pre" class="anim-slot"></div>
+ 177→    <div id="l1-anim-post" class="anim-slot"></div>
+ 178→
+ 179→    <div id="l1-stage-info">
+ 180→        <div class="l1-stage-badge active" id="l1-stage-1">保险柜破解</div>
+ 181→        <div class="l1-stage-badge" id="l1-stage-2">摩斯密码</div>
+ 182→        <div class="l1-stage-badge" id="l1-stage-3">固定密码</div>
+ 183→    </div>
+ 184→
+ 185→    <div id="l1-tangbao-panel" class="tangbao-panel">
+ 186→        <div id="l1-tangbao-title" class="tangbao-title">糖包助手</div>
+ 187→        <div id="l1-tangbao-body" class="tangbao-body">三道密码锁挡住了启动装置！依次破解！</div>
+ 188→    </div>
+ 189→
+ 190→    <!-- Stage 1: Safe Cracking -->
+ 191→    <div id="l1-safe-panel">
+ 192→        <div class="l1-safe-title">保险柜破解 · 启动装置</div>
+ 193→        <div id="l1-safe-target">目标字符: <span id="l1-safe-target-char">?</span></div>
+ 194→        <div id="l1-safe-grid-wrap">
+ 195→            <canvas id="l1-safe-grid-canvas"></canvas>
+ 196→        </div>
+ 197→        <div class="l1-safe-hint">黄色高亮行 = 当前行 · 绿色竖线 = 瞄准点 · 目标字符到中央时按 <kbd>空格</kbd></div>
+ 198→        <div id="l1-safe-locked"></div>
+ 199→    </div>
+ 200→
+ 201→    <!-- Stage 2: Morse Code Lock -->
+ 202→    <div id="l1-morse-panel">
+ 203→        <div class="l1-morse-title">摩斯密码门 · 对照参考表输入数字</div>
+ 204→        <div class="l1-morse-body">
+ 205→            <div class="l1-morse-left">
+ 206→                <div id="l1-morse-display"></div>
+ 207→                <div class="l1-morse-ref">
+ 208→                    <div class="l1-morse-ref-title">▸ 密码破译线索</div>
+ 209→                    <div class="l1-morse-ref-grid" id="l1-morse-ref-grid"></div>
+ 210→                </div>
+ 211→            </div>
+ 212→            <div class="l1-morse-right">
+ 213→                <div id="l1-morse-keypad"></div>
+ 214→            </div>
+ 215→        </div>
+ 216→    </div>
+ 217→
+ 218→    <!-- Stage 3: Fixed Password -->
+ 219→    <div id="l1-fixed-panel">
+ 220→        <div class="l1-fixed-title">固定密码 · 最终启动</div>
+ 221→        <div id="l1-fixed-clue" class="l1-fixed-clue"></div>
+ 222→        <div id="l1-fixed-display"></div>
+ 223→        <div id="l1-fixed-keypad"></div>
+ 224→    </div>
+ 225→
+ 226→    <div class="pass-screen" id="l1-pass-screen">
+ 227→        <div class="title">启动成功</div>
+ 228→        <div class="sub">穿梭机引擎已启动，向第二关进发</div>
+ 229→        <button onclick="location.href='level2.html'">继续 →</button>
+ 230→    </div>
+ 231→</div>
+ 232→
+ 233→<script>
+ 234→// 静默预览环境注入脚本残留错误(来源<anonymous>的"is not defined"), 游戏真实错误照常抛出
+ 235→(function(){
+ 236→  var _oe = window.onerror;
+ 237→  window.onerror = function(msg, src, line, col, err){
+ 238→    if (!src && typeof msg === 'string' && /is not defined$/.test(msg) && line <= 1) return true;
+ 239→    if (_oe) return _oe.apply(this, arguments);
+ 240→  };
+ 241→})();
+ 242→// ================================================================
+ 243→// COMMON.JS  (AnimSlot / GameUI / SFX)
+ 244→// ================================================================
+ 245→// ================================================================
+ 246→// COMMON.JS  (AnimSlot, GameUI, SFX)
+ 247→// ================================================================
+ 248→
+ 249→/**
+ 250→ * 通用动画插槽系统
+ 251→ */
+ 252→const AnimSlot = {
+ 253→    current: null,
+ 254→
+ 255→    play(containerId, videoSrc, opts = {}) {
+ 256→        return new Promise((resolve) => {
+ 257→            const container = document.getElementById(containerId);
+ 258→            if (!container || !videoSrc) {
+ 259→                resolve();
+ 260→                return;
+ 261→            }
+ 262→
+ 263→            container.innerHTML = '';
+ 264→            container.classList.add('anim-active');
+ 265→
+ 266→            const wrapper = document.createElement('div');
+ 267→            wrapper.className = 'anim-wrapper';
+ 268→
+ 269→            const video = document.createElement('video');
+ 270→            video.src = videoSrc;
+ 271→            video.autoplay = true;
+ 272→            video.playsInline = true;
+ 273→            video.className = 'anim-video';
+ 274→
+ 275→            if (opts.subtitle) {
+ 276→                const sub = document.createElement('div');
+ 277→                sub.className = 'anim-subtitle';
+ 278→                sub.textContent = opts.subtitle;
+ 279→                wrapper.appendChild(sub);
+ 280→            }
+ 281→
+ 282→            if (opts.skip !== false) {
+ 283→                const skipBtn = document.createElement('button');
+ 284→                skipBtn.className = 'anim-skip';
+ 285→                skipBtn.textContent = '跳过 →';
+ 286→                skipBtn.onclick = () => {
+ 287→                    container.classList.remove('anim-active');
+ 288→                    container.innerHTML = '';
+ 289→                    AnimSlot.current = null;
+ 290→                    resolve();
+ 291→                };
+ 292→                wrapper.appendChild(skipBtn);
+ 293→            }
+ 294→
+ 295→            wrapper.appendChild(video);
+ 296→            container.appendChild(wrapper);
+ 297→            AnimSlot.current = { container, resolve };
+ 298→
+ 299→            video.onended = () => {
+ 300→                container.classList.remove('anim-active');
+ 301→                container.innerHTML = '';
+ 302→                AnimSlot.current = null;
+ 303→                resolve();
+ 304→            };
+ 305→
+ 306→            video.onerror = () => {
+ 307→                container.classList.remove('anim-active');
+ 308→                container.innerHTML = '';
+ 309→                AnimSlot.current = null;
+ 310→                resolve();
+ 311→            };
+ 312→        });
+ 313→    },
+ 314→
+ 315→    skip() {
+ 316→        if (AnimSlot.current) {
+ 317→            const { container, resolve } = AnimSlot.current;
+ 318→            container.classList.remove('anim-active');
+ 319→            container.innerHTML = '';
+ 320→            AnimSlot.current = null;
+ 321→            resolve();
+ 322→        }
+ 323→    }
+ 324→};
+ 325→
+ 326→/**
+ 327→ * 通用UI组件
+ 328→ */
+ 329→const GameUI = {
+ 330→    createTangbao(title, msg) {
+ 331→        return `
+ 332→            <div id="tangbao-panel">
+ 333→                <div id="tangbao-title">${title || '糖包助手'}</div>
+ 334→                <div id="tangbao-body">${msg || ''}</div>
+ 335→            </div>
+ 336→        `;
+ 337→    },
+ 338→
+ 339→    createHPBar(label) {
+ 340→        return `
+ 341→            <div id="hp-bar">
+ 342→                <div id="hp-label">${label || 'HP'}</div>
+ 343→                <div id="hp-track"><div id="hp-fill"></div></div>
+ 344→            </div>
+ 345→        `;
+ 346→    },
+ 347→
+ 348→    createProgressBar(label) {
+ 349→        return `
+ 350→            <div id="progress-bar">
+ 351→                <div id="progress-label">${label || '进度'}</div>
+ 352→                <div id="progress-track"><div id="progress-fill"></div></div>
+ 353→            </div>
+ 354→        `;
+ 355→    }
+ 356→};
+ 357→
+ 358→/**
+ 359→ * 通用音效系统（Web Audio API）
+ 360→ */
+ 361→const SFX = {
+ 362→    ctx: null,
+ 363→
+ 364→    init() {
+ 365→        if (!this.ctx) {
+ 366→            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+ 367→        }
+ 368→        if (this.ctx.state === 'suspended') this.ctx.resume();
+ 369→    },
+ 370→
+ 371→    play(freq, dur, type = 'square', vol = 0.15) {
+ 372→        this.init();
+ 373→        const osc = this.ctx.createOscillator();
+ 374→        const gain = this.ctx.createGain();
+ 375→        osc.type = type;
+ 376→        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+ 377→        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+ 378→        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+ 379→        osc.connect(gain);
+ 380→        gain.connect(this.ctx.destination);
+ 381→        osc.start();
+ 382→        osc.stop(this.ctx.currentTime + dur);
+ 383→    },
+ 384→
+ 385→    sweep(f1, f2, dur, type = 'sawtooth', vol = 0.12) {
+ 386→        this.init();
+ 387→        const osc = this.ctx.createOscillator();
+ 388→        const gain = this.ctx.createGain();
+ 389→        osc.type = type;
+ 390→        osc.frequency.setValueAtTime(f1, this.ctx.currentTime);
+ 391→        osc.frequency.exponentialRampToValueAtTime(f2, this.ctx.currentTime + dur);
+ 392→        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+ 393→        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+ 394→        osc.connect(gain);
+ 395→        gain.connect(this.ctx.destination);
+ 396→        osc.start();
+ 397→        osc.stop(this.ctx.currentTime + dur);
+ 398→    },
+ 399→
+ 400→    noise(dur, vol = 0.08) {
+ 401→        this.init();
+ 402→        const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate * dur, this.ctx.sampleRate);
+ 403→        const data = buffer.getChannelData(0);
+ 404→        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+ 405→        const src = this.ctx.createBufferSource();
+ 406→        src.buffer = buffer;
+ 407→        const gain = this.ctx.createGain();
+ 408→        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+ 409→        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+ 410→        src.connect(gain);
+ 411→        gain.connect(this.ctx.destination);
+ 412→        src.start();
+ 413→    },
+ 414→
+ 415→    shoot() { this.sweep(800, 200, 0.08, 'square', 0.1); },
+ 416→    hit() { this.sweep(400, 80, 0.15, 'sawtooth', 0.12); },
+ 417→    explode() { this.noise(0.25, 0.1); this.sweep(200, 50, 0.3, 'sawtooth', 0.08); },
+ 418→    pickup() { this.play(660, 0.1); setTimeout(() => this.play(880, 0.15), 80); },
+ 419→    click() { this.play(440, 0.05, 'sine', 0.08); },
+ 420→    success() { this.play(523, 0.12); setTimeout(() => this.play(659, 0.12), 100); setTimeout(() => this.play(784, 0.2), 200); },
+ 421→    fail() { this.sweep(220, 110, 0.3, 'square', 0.1); },
+ 422→    dot() { this.play(600, 0.08, 'sine', 0.12); },
+ 423→    dash() { this.play(400, 0.25, 'sine', 0.12); },
+ 424→};
+ 425→
+ 426→/**
+ 427→ * \u7cd6\u5305\u8bed\u97f3\u63d0\u793a\u7cfb\u7edf\uff08Web Speech API\uff09
+ 428→ */
+ 429→var TangbaoVoice = {
+ 430→    speak: function(text) {
+ 431→        try {
+ 432→            if (!window.speechSynthesis) return;
+ 433→            window.speechSynthesis.cancel();
+ 434→            var u = new SpeechSynthesisUtterance(text);
+ 435→            u.lang = 'zh-CN';
+ 436→            u.rate = 1.3;
+ 437→            u.pitch = 1.3;
+ 438→            u.volume = 0.8;
+ 439→            window.speechSynthesis.speak(u);
+ 440→        } catch(e) {}
+ 441→    },
+ 442→    stop: function() {
+ 443→        try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e) {}
+ 444→    }
+ 445→};
+ 446→
+ 447→// ================================================================
+ 448→// VIEW SWITCHING SYSTEM
+ 449→// ================================================================
+ 450→// ================================================================
+ 451→// VIEW SWITCHING SYSTEM
+ 452→// ================================================================
+ 453→let activeView = null;
+ 454→const levelInits = {};
+ 455→
+ 456→function switchTo(viewName) {
+ 457→    // Hide all views
+ 458→    document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+ 459→    // Show target view
+ 460→    const view = document.getElementById('view-' + viewName);
+ 461→    if (view) view.style.display = 'block';
+ 462→    activeView = viewName;
+ 463→    // Call init function for that view
+ 464→    if (levelInits[viewName]) levelInits[viewName]();
+ 465→}
+ 466→
+ 467→// ================================================================
+ 468→// LEVEL 1 - 三道密码锁
+ 469→// ================================================================
+ 470→// ================================================================
+ 471→// LEVEL 1 - 3-Stage Password Lock
+ 472→// ================================================================
+ 473→(function() {
+ 474→    const $ = (id) => document.getElementById('l1-' + id);
+ 475→    let canvas, ctx;
+ 476→    let W, H, time = 0;
+ 477→    var rafId = 0;
+ 478→
+ 479→    function resize() {
+ 480→        if (!canvas) return;
+ 481→        W = canvas.width = innerWidth;
+ 482→        H = canvas.height = innerHeight;
+ 483→    }
+ 484→
+ 485→    // ==================== STAGE 1: Safe Cracking (Delta Force style) ====================
+ 486→    var safeCanvas, safeCtx;
+ 487→    var sCharset = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789';
+ 488→    var sNumRows = 3;
+ 489→    var sCharSize = 44;
+ 490→    var sNumCols = 9;
+ 491→    var sRows = [];
+ 492→    var sRowTargets = [];
+ 493→    var sLockedChars = [];
+ 494→    var sTotalLocks = 3;
+ 495→    var sCurrentLocks = 0;
+ 496→    var sFeedbackTimer = 0;
+ 497→    var sFeedbackText = '';
+ 498→    var sFeedbackColor = '';
+ 499→    var sShakeTime = 0;
+ 500→    var sCanLock = true;
+ 501→    var sSpacePressed = false;
+ 502→    var sTargetAtCenter = false;
+ 503→    var sHitZone = 20;
+ 504→    var sRowLen = 12;
+ 505→
+ 506→    function safeResize() {
+ 507→        if (!safeCanvas) return;
+ 508→        var wrap = $('safe-grid-wrap');
+ 509→        // 转盘占屏幕约50%面积: 宽0.86W × 高0.62H ≈ 0.53×W×H,居中
+ 510→        var ww = Math.min(innerWidth * 0.86, 1500);
+ 511→        var hh = Math.min(innerHeight * 0.62, 720);
+ 512→        wrap.style.width = ww + 'px';
+ 513→        wrap.style.height = hh + 'px';
+ 514→        safeCanvas.width = ww;
+ 515→        safeCanvas.height = hh;
+ 516→        // 动态字符尺寸: 3 行铺满转盘高度,列数按宽度自适应
+ 517→        sCharSize = Math.floor((hh - 16) / sNumRows);
+ 518→        sNumCols = Math.max(7, Math.floor(ww / sCharSize));
+ 519→        sHitZone = Math.floor(sCharSize * 0.42);
+ 520→    }
+ 521→
+ 522→    function shuffleArray(arr) {
+ 523→        for (var i = arr.length - 1; i > 0; i--) {
+ 524→            var j = Math.floor(Math.random() * (i + 1));
+ 525→            var tmp = arr[i];
+ 526→            arr[i] = arr[j];
+ 527→            arr[j] = tmp;
+ 528→        }
+ 529→        return arr;
+ 530→    }
+ 531→
+ 532→    function makeRowChars(target) {
+ 533→        var pool = sCharset.replace(target, '');
+ 534→        var chars = [];
+ 535→        for (var i = 0; i < sRowLen - 3; i++) {
+ 536→            chars.push(pool[Math.floor(Math.random() * pool.length)]);
+ 537→        }
+ 538→        for (var i = 0; i < 3; i++) {
+ 539→            var pos = Math.floor(Math.random() * (chars.length + 1));
+ 540→            chars.splice(pos, 0, target);
+ 541→        }
+ 542→        return chars.concat(chars);
+ 543→    }
+ 544→
+ 545→    function generateSafeRows() {
+ 546→        sRows = [];
+ 547→        sRowTargets = [];
+ 548→        var charsetArr = sCharset.split('');
+ 549→        var targets = [];
+ 550→        for (var i = 0; i < sNumRows; i++) {
+ 551→            var ch;
+ 552→            do {
+ 553→                ch = charsetArr[Math.floor(Math.random() * charsetArr.length)];
+ 554→            } while (targets.indexOf(ch) >= 0);
+ 555→            targets.push(ch);
+ 556→        }
+ 557→        for (var r = 0; r < sNumRows; r++) {
+ 558→            sRowTargets[r] = targets[r];
+ 559→            sRows.push({
+ 560→                chars: makeRowChars(targets[r]),
+ 561→                // 转速放慢: 按字符格尺寸比例(跨分辨率一致),约 0.018 格/帧
+ 562→                speed: sCharSize * 0.018 + r * sCharSize * 0.004,
+ 563→                offset: Math.random() * sRowLen * sCharSize,
+ 564→                dir: r % 2 === 0 ? 1 : -1,
+ 565→                locked: false
+ 566→            });
+ 567→        }
+ 568→        updateSafeTargetDisplay();
+ 569→    }
+ 570→
+ 571→    function updateSafeTargetDisplay() {
+ 572→        var targetEl = $('safe-target-char');
+ 573→        if (targetEl && sRowTargets[sCurrentLocks]) {
+ 574→            targetEl.textContent = sRowTargets[sCurrentLocks];
+ 575→        }
+ 576→    }
+ 577→
+ 578→    function startSafeRound() {
+ 579→        sCurrentLocks = 0;
+ 580→        sLockedChars = [];
+ 581→        generateSafeRows();
+ 582→        sCanLock = true;
+ 583→        updateSafeLockedDisplay();
+ 584→        updateSafeTargetDisplay();
+ 585→    }
+ 586→
+ 587→    function regenerateRow(rowIdx) {
+ 588→        var row = sRows[rowIdx];
+ 589→        if (!row) return;
+ 590→        var target = sRowTargets[rowIdx];
+ 591→        row.chars = makeRowChars(target);
+ 592→        row.offset = Math.random() * sRowLen * sCharSize;
+ 593→        row.locked = false;
+ 594→    }
+ 595→
+ 596→    function getCenterCharInfo(rowIdx) {
+ 597→        var row = sRows[rowIdx];
+ 598→        if (!row) return null;
+ 599→        var totalWidth = row.chars.length * sCharSize;
+ 600→        var offset = ((row.offset % totalWidth) + totalWidth) % totalWidth;
+ 601→        var gridW = sNumCols * sCharSize;
+ 602→        var centerPos = gridW / 2;
+ 603→        // 与绘制严格对齐: drawSafeGrid 中 textAlign='center',
+ 604→        // 字符 i 的中心(相对 gridX)= i*sCharSize - offset(字符画在格线上)。
+ 605→        // 原代码用 floor() 并 +sCharSize/2(误把字符当成在格子中央),与画面差半格,
+ 606→        // 导致肉眼看到目标字符对齐绿线时判定 dist≈半格 > sHitZone 而失败。
+ 607→        var exact = (centerPos + offset) / sCharSize;
+ 608→        var idx = Math.round(exact) % row.chars.length;
+ 609→        if (idx < 0) idx += row.chars.length;
+ 610→        var charCenterX = idx * sCharSize - offset;
+ 611→        var dist = charCenterX - centerPos;
+ 612→        while (dist > totalWidth / 2) dist -= totalWidth;
+ 613→        while (dist < -totalWidth / 2) dist += totalWidth;
+ 614→        return { idx: idx, char: row.chars[idx], dist: Math.abs(dist) };
+ 615→    }
+ 616→
+ 617→    function trySafeLock() {
+ 618→        if (!sCanLock) return;
+ 619→        sCanLock = false;
+ 620→        var rowIdx = sCurrentLocks;
+ 621→        var info = getCenterCharInfo(rowIdx);
+ 622→        if (!info) { sCanLock = true; return; }
+ 623→        var target = sRowTargets[rowIdx];
+ 624→        if (info.char === target && info.dist < sHitZone) {
+ 625→            sRows[rowIdx].locked = true;
+ 626→            sCurrentLocks++;
+ 627→            sLockedChars.push(target);
+ 628→            sFeedbackText = '\u2713';
+ 629→            sFeedbackColor = '#22c55e';
+ 630→            sFeedbackTimer = 25;
+ 631→            SFX.success();
+ 632→            updateSafeLockedDisplay();
+ 633→            if (sCurrentLocks >= sTotalLocks) {
+ 634→                setTimeout(function() { goStage2(); }, 800);
+ 635→            } else {
+ 636→                updateSafeTargetDisplay();
+ 637→                setTimeout(function() { sCanLock = true; }, 350);
+ 638→            }
+ 639→        } else {
+ 640→            sFeedbackText = '\u2717';
+ 641→            sFeedbackColor = '#ef4444';
+ 642→            sFeedbackTimer = 25;
+ 643→            sShakeTime = 5;
+ 644→            SFX.fail();
+ 645→            setTimeout(function() {
+ 646→                regenerateRow(rowIdx);
+ 647→                sCanLock = true;
+ 648→            }, 300);
+ 649→        }
+ 650→    }
+ 651→
+ 652→    function updateSafeLockedDisplay() {
+ 653→        var display = $('safe-locked');
+ 654→        display.innerHTML = '';
+ 655→        for (var i = 0; i < sTotalLocks; i++) {
+ 656→            var div = document.createElement('div');
+ 657→            div.className = 'l1-safe-char';
+ 658→            if (i < sLockedChars.length) {
+ 659→                div.classList.add('filled');
+ 660→                div.textContent = sLockedChars[i];
+ 661→            } else if (i === sCurrentLocks) {
+ 662→                div.classList.add('current');
+ 663→            }
+ 664→            display.appendChild(div);
+ 665→        }
+ 666→    }
+ 667→
+ 668→    function updateSafeOffsets() {
+ 669→        for (var r = 0; r < sNumRows; r++) {
+ 670→            var row = sRows[r];
+ 671→            if (!row || row.locked) continue;
+ 672→            row.offset += row.speed * row.dir;
+ 673→        }
+ 674→    }
+ 675→
+ 676→    function drawSafeGrid() {
+ 677→        if (!safeCtx) return;
+ 678→        var sw = safeCanvas.width;
+ 679→        var sh = safeCanvas.height;
+ 680→        var gridW = sNumCols * sCharSize;
+ 681→        var gridH = sNumRows * sCharSize;
+ 682→        var gridX = (sw - gridW) / 2;
+ 683→        var gridY = Math.max(4, (sh - gridH) / 2);
+ 684→        // 字号随字符格尺寸等比缩放
+ 685→        var fsLock = Math.round(sCharSize * 0.62);   // 命中高亮
+ 686→        var fsAct  = Math.round(sCharSize * 0.52);   // 活动行
+ 687→        var fsNorm = Math.round(sCharSize * 0.44);   // 普通字符
+ 688→        var fsIcon = Math.round(sCharSize * 0.40);   // 锁图标
+ 689→        var fsTip  = Math.round(sCharSize * 0.30);   // 底部提示
+ 690→        var fsFb   = Math.round(sCharSize * 0.85);   // 反馈 ✓/✗
+ 691→
+ 692→        safeCtx.save();
+ 693→        if (sShakeTime > 0) {
+ 694→            safeCtx.translate((Math.random() - 0.5) * sShakeTime, (Math.random() - 0.5) * sShakeTime);
+ 695→            sShakeTime -= 0.5;
+ 696→        }
+ 697→
+ 698→        safeCtx.fillStyle = 'rgba(10,10,20,0.95)';
+ 699→        safeCtx.fillRect(0, 0, sw, sh);
+ 700→
+ 701→        var centerX = gridX + gridW / 2;
+ 702→        var centerBoxX = centerX - sCharSize / 2;
+ 703→
+ 704→        // Hit zone - wider green band
+ 705→        safeCtx.fillStyle = 'rgba(34,197,94,0.12)';
+ 706→        safeCtx.fillRect(centerX - sHitZone, gridY - 4, sHitZone * 2, gridH + 8);
+ 707→        safeCtx.strokeStyle = 'rgba(34,197,94,0.5)';
+ 708→        safeCtx.lineWidth = 2;
+ 709→        safeCtx.beginPath();
+ 710→        safeCtx.moveTo(centerX - sHitZone, gridY - 4);
+ 711→        safeCtx.lineTo(centerX - sHitZone, gridY + gridH + 4);
+ 712→        safeCtx.moveTo(centerX + sHitZone, gridY - 4);
+ 713→        safeCtx.lineTo(centerX + sHitZone, gridY + gridH + 4);
+ 714→        safeCtx.stroke();
+ 715→
+ 716→        // Center line
+ 717→        safeCtx.strokeStyle = 'rgba(34,197,94,0.7)';
+ 718→        safeCtx.lineWidth = 1.5;
+ 719→        safeCtx.beginPath();
+ 720→        safeCtx.moveTo(centerX, gridY - 8);
+ 721→        safeCtx.lineTo(centerX, gridY + gridH + 8);
+ 722→        safeCtx.stroke();
+ 723→
+ 724→        // Arrow
+ 725→        safeCtx.fillStyle = 'rgba(34,197,94,0.8)';
+ 726→        safeCtx.beginPath();
+ 727→        safeCtx.moveTo(centerX - 7, gridY - 10);
+ 728→        safeCtx.lineTo(centerX + 7, gridY - 10);
+ 729→        safeCtx.lineTo(centerX, gridY - 3);
+ 730→        safeCtx.closePath();
+ 731→        safeCtx.fill();
+ 732→
+ 733→        sTargetAtCenter = false;
+ 734→        safeCtx.textAlign = 'center';
+ 735→        safeCtx.textBaseline = 'middle';
+ 736→
+ 737→        for (var r = 0; r < sNumRows; r++) {
+ 738→            var row = sRows[r];
+ 739→            if (!row) continue;
+ 740→            var rowY = gridY + r * sCharSize;
+ 741→            var isActiveRow = (r === sCurrentLocks && !row.locked);
+ 742→            var isLockedRow = row.locked;
+ 743→            var rowTarget = sRowTargets[r] || '';
+ 744→
+ 745→            if (isLockedRow) {
+ 746→                safeCtx.fillStyle = 'rgba(34,197,94,0.1)';
+ 747→                safeCtx.fillRect(gridX - 6, rowY, gridW + 12, sCharSize);
+ 748→                safeCtx.strokeStyle = 'rgba(34,197,94,0.4)';
+ 749→                safeCtx.lineWidth = 1.5;
+ 750→                safeCtx.strokeRect(gridX - 6, rowY, gridW + 12, sCharSize);
+ 751→            } else if (isActiveRow) {
+ 752→                safeCtx.fillStyle = 'rgba(251,191,36,0.12)';
+ 753→                safeCtx.fillRect(gridX - 6, rowY, gridW + 12, sCharSize);
+ 754→                safeCtx.strokeStyle = 'rgba(251,191,36,0.6)';
+ 755→                safeCtx.lineWidth = 2;
+ 756→                safeCtx.strokeRect(gridX - 6, rowY, gridW + 12, sCharSize);
+ 757→                safeCtx.fillStyle = '#fbbf24';
+ 758→                safeCtx.fillRect(gridX - 12, rowY + 4, 4, sCharSize - 8);
+ 759→                safeCtx.fillRect(gridX + gridW + 8, rowY + 4, 4, sCharSize - 8);
+ 760→            } else {
+ 761→                safeCtx.fillStyle = 'rgba(255,255,255,0.03)';
+ 762→                safeCtx.fillRect(gridX - 6, rowY, gridW + 12, sCharSize);
+ 763→            }
+ 764→
+ 765→            var totalWidth = row.chars.length * sCharSize;
+ 766→            var offset = ((row.offset % totalWidth) + totalWidth) % totalWidth;
+ 767→            var subOffset = offset % sCharSize;
+ 768→
+ 769→            for (var c = 0; c < sNumCols + 2; c++) {
+ 770→                var charIdx = (Math.floor(offset / sCharSize) + c) % row.chars.length;
+ 771→                if (charIdx < 0) charIdx += row.chars.length;
+ 772→                var ch = row.chars[charIdx];
+ 773→                var x = gridX + c * sCharSize - subOffset;
+ 774→                var y = rowY + sCharSize / 2;
+ 775→                if (x < gridX - sCharSize || x > gridX + gridW + sCharSize) continue;
+ 776→
+ 777→                var distFromCenter = Math.abs(x - centerX);
+ 778→                var inHitZone = distFromCenter < sHitZone;
+ 779→
+ 780→                if (isLockedRow) {
+ 781→                    safeCtx.fillStyle = inHitZone ? '#22c55e' : 'rgba(34,197,94,0.2)';
+ 782→                    safeCtx.font = inHitZone ? 'bold ' + fsLock + 'px monospace' : 'bold ' + fsNorm + 'px monospace';
+ 783→                    if (inHitZone) {
+ 784→                        safeCtx.shadowBlur = 10;
+ 785→                        safeCtx.shadowColor = 'rgba(34,197,94,0.6)';
+ 786→                    }
+ 787→                } else if (inHitZone && isActiveRow && ch === rowTarget) {
+ 788→                    sTargetAtCenter = true;
+ 789→                    safeCtx.fillStyle = '#22c55e';
+ 790→                    safeCtx.shadowBlur = 16;
+ 791→                    safeCtx.shadowColor = 'rgba(34,197,94,0.9)';
+ 792→                    safeCtx.font = 'bold ' + fsLock + 'px monospace';
+ 793→                } else if (inHitZone && isActiveRow) {
+ 794→                    safeCtx.fillStyle = '#fbbf24';
+ 795→                    safeCtx.shadowBlur = 6;
+ 796→                    safeCtx.shadowColor = 'rgba(251,191,36,0.4)';
+ 797→                    safeCtx.font = 'bold ' + Math.round(sCharSize * 0.58) + 'px monospace';
+ 798→                } else if (inHitZone) {
+ 799→                    safeCtx.fillStyle = 'rgba(34,197,94,0.5)';
+ 800→                    safeCtx.font = 'bold ' + Math.round(sCharSize * 0.48) + 'px monospace';
+ 801→                } else if (isActiveRow) {
+ 802→                    safeCtx.fillStyle = 'rgba(251,191,36,0.6)';
+ 803→                    safeCtx.font = 'bold ' + fsAct + 'px monospace';
+ 804→                } else {
+ 805→                    safeCtx.fillStyle = 'rgba(255,255,255,0.15)';
+ 806→                    safeCtx.font = 'bold ' + fsNorm + 'px monospace';
+ 807→                }
+ 808→
+ 809→                safeCtx.fillText(ch, x, y);
+ 810→                safeCtx.shadowBlur = 0;
+ 811→            }
+ 812→
+ 813→            if (isLockedRow) {
+ 814→                safeCtx.font = fsIcon + 'px sans-serif';
+ 815→                safeCtx.fillStyle = '#22c55e';
+ 816→                safeCtx.fillText('\uD83D\uDD12', gridX - sCharSize * 0.55, rowY + sCharSize / 2);
+ 817→            }
+ 818→        }
+ 819→
+ 820→        if (sTargetAtCenter && sCanLock) {
+ 821→            var pulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+ 822→            safeCtx.fillStyle = 'rgba(34,197,94,' + pulse + ')';
+ 823→            safeCtx.font = 'bold ' + fsTip + 'px sans-serif';
+ 824→            safeCtx.fillText('\u25BC 按空格锁定 \u25BC', centerX, gridY + gridH + fsTip + 6);
+ 825→        }
+ 826→
+ 827→        if (sFeedbackTimer > 0) {
+ 828→            safeCtx.font = 'bold ' + fsFb + 'px sans-serif';
+ 829→            safeCtx.fillStyle = sFeedbackColor;
+ 830→            safeCtx.globalAlpha = sFeedbackTimer / 25;
+ 831→            safeCtx.fillText(sFeedbackText, sw / 2, sh / 2);
+ 832→            safeCtx.globalAlpha = 1;
+ 833→            sFeedbackTimer--;
+ 834→        }
+ 835→
+ 836→        safeCtx.restore();
+ 837→    }
+ 838→
+ 839→    function renderSafe() {
+ 840→        updateSafeOffsets();
+ 841→        drawSafeGrid();
+ 842→    }
+ 843→
+ 844→    // ==================== STAGE 2: Morse Code Lock ====================
+ 845→    var morseMap = {
+ 846→        '0': ['dash','dash','dash','dash','dash'],
+ 847→        '1': ['dot','dash','dash','dash','dash'],
+ 848→        '2': ['dot','dot','dash','dash','dash'],
+ 849→        '3': ['dot','dot','dot','dash','dash'],
+ 850→        '4': ['dot','dot','dot','dot','dash'],
+ 851→        '5': ['dot','dot','dot','dot','dot'],
+ 852→        '6': ['dash','dot','dot','dot','dot'],
+ 853→        '7': ['dash','dash','dot','dot','dot'],
+ 854→        '8': ['dash','dash','dash','dot','dot'],
+ 855→        '9': ['dash','dash','dash','dash','dot']
+ 856→    };
+ 857→    var mAnswer = '';
+ 858→    var mInput = '';
+ 859→    var mWrongCount = 0;
+ 860→    var mMaxWrong = 5;
+ 861→    var mTotalRounds = 2;
+ 862→    var mCurrentRound = 0;
+ 863→
+ 864→    function generateMorseRound() {
+ 865→        mAnswer = '';
+ 866→        var len = 4;
+ 867→        for (var i = 0; i < len; i++) {
+ 868→            mAnswer += Math.floor(Math.random() * 10).toString();
+ 869→        }
+ 870→        mInput = '';
+ 871→        renderMorseDisplay();
+ 872→        renderMorseInput();
+ 873→    }
+ 874→
+ 875→    function renderMorseDisplay() {
+ 876→        var display = $('morse-display');
+ 877→        display.innerHTML = '';
+ 878→        for (var i = 0; i < mAnswer.length; i++) {
+ 879→            var card = document.createElement('div');
+ 880→            card.className = 'l1-morse-card';
+ 881→            var cardLabel = document.createElement('div');
+ 882→            cardLabel.className = 'l1-morse-card-label';
+ 883→            cardLabel.textContent = '第 ' + (i + 1) + ' 位';
+ 884→            card.appendChild(cardLabel);
+ 885→            var patternBox = document.createElement('div');
+ 886→            patternBox.className = 'l1-morse-pattern';
+ 887→            var pattern = morseMap[mAnswer[i]];
+ 888→            for (var j = 0; j < pattern.length; j++) {
+ 889→                var el = document.createElement('div');
+ 890→                el.className = pattern[j] === 'dot' ? 'l1-morse-dot' : 'l1-morse-dash';
+ 891→                patternBox.appendChild(el);
+ 892→            }
+ 893→            card.appendChild(patternBox);
+ 894→            if (i < mInput.length) {
+ 895→                var filled = document.createElement('div');
+ 896→                filled.className = 'l1-morse-card-filled';
+ 897→                filled.textContent = mInput[i];
+ 898→                card.appendChild(filled);
+ 899→                card.classList.add('done');
+ 900→            } else if (i === mInput.length) {
+ 901→                card.classList.add('active');
+ 902→            }
+ 903→            display.appendChild(card);
+ 904→        }
+ 905→    }
+ 906→
+ 907→    function renderMorseInput() {
+ 908→        renderMorseDisplay();
+ 909→    }
+ 910→
+ 911→    function renderMorseKeypad() {
+ 912→        var keypad = $('morse-keypad');
+ 913→        keypad.innerHTML = '';
+ 914→        var keys = ['1','2','3','4','5','6','7','8','9','0','C','\u2190'];
+ 915→        for (var i = 0; i < keys.length; i++) {
+ 916→            var key = document.createElement('div');
+ 917→            key.className = 'l1-morse-key';
+ 918→            if (keys[i] === 'C' || keys[i] === '\u2190') key.classList.add('special');
+ 919→            key.textContent = keys[i];
+ 920→            key.setAttribute('data-key', keys[i]);
+ 921→            key.onclick = function() { handleMorseKey(this.getAttribute('data-key')); };
+ 922→            keypad.appendChild(key);
+ 923→        }
+ 924→    }
+ 925→
+ 926→    // 图形化摩斯参考表: 点=圆点, 划=横条, 5 槽位等宽
+ 927→    function renderMorseRef() {
+ 928→        var grid = $('morse-ref-grid');
+ 929→        if (!grid) return;
+ 930→        var codes = {'1':'.----','2':'..---','3':'...--','4':'....-','5':'.....','6':'-....','7':'--...','8':'---..','9':'----.','0':'-----'};
+ 931→        var order = ['1','2','3','4','5','6','7','8','9','0'];
+ 932→        var html = '';
+ 933→        for (var k = 0; k < order.length; k++) {
+ 934→            var n = order[k];
+ 935→            var sym = '';
+ 936→            for (var i = 0; i < 5; i++) {
+ 937→                sym += '<span class="mr-slot"><i class="' + (codes[n][i] === '.' ? 'mr-dot' : 'mr-dash') + '"></i></span>';
+ 938→            }
+ 939→            html += '<div class="l1-morse-ref-cell"><span class="mr-sym">' + sym + '</span><span class="mn">' + n + '</span></div>';
+ 940→        }
+ 941→        grid.innerHTML = html;
+ 942→    }
+ 943→
+ 944→    function handleMorseKey(key) {
+ 945→        if (key === 'C') {
+ 946→            mInput = '';
+ 947→            renderMorseInput();
+ 948→            try { SFX.play(300, 0.05, 'square', 0.06); } catch(e) {}
+ 949→        } else if (key === '\u2190') {
+ 950→            if (mInput.length > 0) {
+ 951→                mInput = mInput.slice(0, -1);
+ 952→                renderMorseInput();
+ 953→                try { SFX.play(300, 0.05, 'square', 0.06); } catch(e) {}
+ 954→            }
+ 955→        } else {
+ 956→            if (mInput.length < mAnswer.length) {
+ 957→                mInput += key;
+ 958→                renderMorseInput();
+ 959→                try { SFX.play(500 + parseInt(key) * 30, 0.05, 'sine', 0.08); } catch(e) {}
+ 960→                if (mInput.length === mAnswer.length) {
+ 961→                    setTimeout(checkMorseAnswer, 300);
+ 962→                }
+ 963→            }
+ 964→        }
+ 965→    }
+ 966→
+ 967→    function checkMorseAnswer() {
+ 968→        if (mInput === mAnswer) {
+ 969→            try { SFX.success(); } catch(e) {}
+ 970→            $('flash-correct').classList.add('show');
+ 971→            setTimeout(function() { $('flash-correct').classList.remove('show'); }, 400);
+ 972→            mCurrentRound++;
+ 973→            if (mCurrentRound >= mTotalRounds) {
+ 974→                setTimeout(function() { goStage3(); }, 1000);
+ 975→            } else {
+ 976→                setTimeout(function() { generateMorseRound(); }, 1000);
+ 977→            }
+ 978→        } else {
+ 979→            try { SFX.fail(); } catch(e) {}
+ 980→            $('flash-wrong').classList.add('show');
+ 981→            setTimeout(function() { $('flash-wrong').classList.remove('show'); }, 400);
+ 982→            mWrongCount++;
+ 983→            if (mWrongCount >= mMaxWrong) {
+ 984→                mWrongCount = 0;
+ 985→                mCurrentRound = 0;
+ 986→                setTimeout(function() { generateMorseRound(); }, 800);
+ 987→            } else {
+ 988→                setTimeout(function() {
+ 989→                    mInput = '';
+ 990→                    renderMorseInput();
+ 991→                }, 600);
+ 992→            }
+ 993→        }
+ 994→    }
+ 995→
+ 996→    // ==================== STAGE 3: Fixed Password ====================
+ 997→    var fAnswer = '2580';
+ 998→    var fInput = '';
+ 999→    var fAttempts = 0;
+1000→    var fMaxAttempts = 6;
+1001→    var fClues = [
+1002→        '第1位：宇宙中最小的质数是几？',
+1003→        '第2位：离谱星人一只手有几根手指？',
+1004→        '第3位：把无穷大符号∞旋转90°，看看像哪个数字？',
+1005→        '第4位：一切数字的起点和终点，代表"无"的数字是？'
+1006→    ];
+1007→
+1008→    function renderFixedDisplay() {
+1009→        var display = $('fixed-display');
+1010→        display.innerHTML = '';
+1011→        for (var i = 0; i < fAnswer.length; i++) {
+1012→            var box = document.createElement('div');
+1013→            box.className = 'l1-fixed-box';
+1014→            if (i < fInput.length) {
+1015→                box.classList.add('filled');
+1016→                box.textContent = fInput[i];
+1017→            } else if (i === fInput.length) {
+1018→                box.classList.add('active');
+1019→            }
+1020→            display.appendChild(box);
+1021→        }
+1022→    }
+1023→
+1024→    function renderFixedKeypad() {
+1025→        var keypad = $('fixed-keypad');
+1026→        keypad.innerHTML = '';
+1027→        var keys = ['1','2','3','4','5','6','7','8','9','C','0','\u2190'];
+1028→        for (var i = 0; i < keys.length; i++) {
+1029→            var key = document.createElement('div');
+1030→            key.className = 'l1-fixed-key';
+1031→            if (keys[i] === 'C' || keys[i] === '\u2190') key.classList.add('special');
+1032→            key.textContent = keys[i];
+1033→            key.setAttribute('data-key', keys[i]);
+1034→            key.onclick = function() { handleFixedKey(this.getAttribute('data-key')); };
+1035→            keypad.appendChild(key);
+1036→        }
+1037→    }
+1038→
+1039→    function handleFixedKey(key) {
+1040→        if (key === 'C') {
+1041→            fInput = '';
+1042→            renderFixedDisplay();
+1043→            try { SFX.play(300, 0.05, 'square', 0.06); } catch(e) {}
+1044→        } else if (key === '\u2190') {
+1045→            if (fInput.length > 0) {
+1046→                fInput = fInput.slice(0, -1);
+1047→                renderFixedDisplay();
+1048→                try { SFX.play(300, 0.05, 'square', 0.06); } catch(e) {}
+1049→            }
+1050→        } else {
+1051→            if (fInput.length < fAnswer.length) {
+1052→                fInput += key;
+1053→                renderFixedDisplay();
+1054→                try { SFX.play(500 + parseInt(key) * 30, 0.05, 'sine', 0.08); } catch(e) {}
+1055→                if (fInput.length === fAnswer.length) {
+1056→                    setTimeout(checkFixedAnswer, 300);
+1057→                }
+1058→            }
+1059→        }
+1060→    }
+1061→
+1062→    function checkFixedAnswer() {
+1063→        fAttempts++;
+1064→        if (fInput === fAnswer) {
+1065→            try { SFX.success(); } catch(e) {}
+1066→            var boxes = $('fixed-display').children;
+1067→            for (var i = 0; i < boxes.length; i++) {
+1068→                boxes[i].classList.remove('filled', 'wrong', 'active');
+1069→                boxes[i].classList.add('correct');
+1070→            }
+1071→            $('fixed-clue').innerHTML = '<div style="text-align:center;color:var(--green);font-weight:700;font-size:16px">密码正确！启动装置激活！</div>';
+1072→            setTimeout(function() {
+1073→                $('pass-screen').classList.add('show');
+1074→            }, 1200);
+1075→        } else {
+1076→            try { SFX.fail(); } catch(e) {}
+1077→            $('flash-wrong').classList.add('show');
+1078→            setTimeout(function() { $('flash-wrong').classList.remove('show'); }, 400);
+1079→            var boxes2 = $('fixed-display').children;
+1080→            for (var j = 0; j < boxes2.length; j++) {
+1081→                boxes2[j].classList.add('wrong');
+1082→            }
+1083→            // Keep showing all clues after wrong attempt
+1084→            if (fAttempts >= fMaxAttempts) {
+1085→                $('fixed-clue').innerHTML = '<div style="text-align:center;color:var(--red);font-weight:700;font-size:14px">糖包急了：密码就是 2-5-8-0！快输入！</div>';
+1086→            }
+1087→            setTimeout(function() {
+1088→                fInput = '';
+1089→                renderFixedDisplay();
+1090→            }, 800);
+1091→        }
+1092→    }
+1093→
+1094→    // ==================== Stage transitions ====================
+1095→    function goStage2() {
+1096→        currentStage = 2;
+1097→        $('safe-panel').classList.remove('show');
+1098→        $('morse-panel').classList.add('show');
+1099→        $('stage-1').classList.remove('active');
+1100→        $('stage-1').classList.add('done');
+1101→        $('stage-2').classList.add('active');
+1102→        $('tangbao-body').textContent = '摩斯密码门！看电码图，对照参考表输入数字！';
+1103→        try { TangbaoVoice.speak('主人！第二道是摩斯密码！看电码图对照参考表输入！'); } catch(e) {}
+1104→        mCurrentRound = 0;
+1105→        mWrongCount = 0;
+1106→        renderMorseKeypad();
+1107→        generateMorseRound();
+1108→    }
+1109→
+1110→    function goStage3() {
+1111→        currentStage = 3;
+1112→        $('morse-panel').classList.remove('show');
+1113→        $('fixed-panel').classList.add('show');
+1114→        $('stage-2').classList.remove('active');
+1115→        $('stage-2').classList.add('done');
+1116→        $('stage-3').classList.add('active');
+1117→        $('tangbao-body').textContent = '最后一道！根据糖包的线索输入4位密码！';
+1118→        try { TangbaoVoice.speak('主人！最后一道固定密码！看线索直接输入！'); } catch(e) {}
+1119→        fInput = '';
