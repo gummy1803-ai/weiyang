@@ -95,6 +95,17 @@ kbd{display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.08);borde
 #l2-wave-banner{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-size:36px;font-weight:800;color:var(--amber);text-shadow:0 0 30px rgba(251,191,36,0.4);z-index:20;opacity:0;transition:opacity .5s;letter-spacing:6px;pointer-events:none}
 #l2-wave-banner.show{opacity:1}
 @keyframes l2startPulse{0%,100%{opacity:0.5}50%{opacity:1}}
+/* 模式/难度选择卡片(对齐 level4 风格) */
+#l2-mode-select{display:flex;gap:12px;justify-content:center;margin-bottom:12px;pointer-events:auto}
+.l2-mode-card{width:112px;padding:12px 8px;border:2px solid rgba(45,212,191,0.35);border-radius:12px;background:rgba(15,15,25,0.6);cursor:pointer;transition:all .2s;text-align:center;pointer-events:auto;-webkit-tap-highlight-color:rgba(45,212,191,0.3);touch-action:manipulation;user-select:none}
+.l2-mode-card:hover{border-color:var(--teal);background:rgba(45,212,191,0.12);box-shadow:0 0 20px rgba(45,212,191,0.3)}
+.l2-mode-card .mc-title{font-size:15px;font-weight:700;color:var(--teal);margin-bottom:4px}
+.l2-mode-card .mc-sub{font-size:10px;color:rgba(255,255,255,0.55);line-height:1.5}
+.l2-mode-card .mc-best{font-size:10px;color:var(--amber);margin-top:6px;min-height:14px}
+#l2-diff-select{display:flex;gap:10px;justify-content:center;margin-bottom:12px;pointer-events:auto}
+.l2-diff-btn{padding:7px 18px;border:1.5px solid rgba(255,255,255,0.2);border-radius:20px;background:rgba(15,15,25,0.6);color:rgba(255,255,255,0.6);font-size:13px;cursor:pointer;transition:all .2s;user-select:none;-webkit-tap-highlight-color:rgba(251,191,36,0.3);touch-action:manipulation}
+.l2-diff-btn:hover{border-color:var(--amber);color:var(--amber)}
+.l2-diff-btn.sel{border-color:var(--amber);background:rgba(251,191,36,0.15);color:var(--amber);font-weight:700}
 
 
 </style>
@@ -112,24 +123,46 @@ kbd{display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.08);borde
         <div id="l2-hp-label" class="hp-label">飞船护盾</div>
         <div id="l2-hp-track" class="hp-track"><div id="l2-hp-fill" class="hp-fill"></div></div>
     </div>
-    <div id="l2-wave-info">第 1 / 5 波</div>
-    <div id="l2-score-info">风筝就绪 · 空格发射</div>
+    <div id="l2-wave-info">待命</div>
+    <div id="l2-score-info">得分 0</div>
     <button id="l2-kite-btn" onclick="L2_launchKite()">🪁</button>
     <div id="l2-kite-label">太空风筝<br>空格 · 防御</div>
     <div id="l2-powerup-info"></div>
     <div id="l2-wave-banner"></div>
-    <div id="l2-start-prompt" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;text-align:center;pointer-events:none;width:min(560px,92vw)">
-        <div style="font-size:26px;font-weight:800;color:var(--amber);letter-spacing:5px;text-shadow:0 0 20px rgba(251,191,36,0.4);margin-bottom:14px">星际海盗火力封锁</div>
-        <div style="background:rgba(15,15,25,0.72);border:1px solid var(--border);border-radius:12px;padding:12px 16px;font-size:13px;line-height:1.9;color:var(--cream);text-align:left;margin-bottom:14px">
-            <div style="color:var(--coral);font-weight:700;margin-bottom:4px">🔫 连珠炮</div>
-            <div style="color:rgba(255,255,255,0.82);margin-bottom:10px">一次连发 7 颗子弹，弹幕又多又慢 —— <span style="color:var(--teal)">放太空风筝飞上去就能撞掉（风筝与子弹同归于尽）</span></div>
-            <div style="color:#f87171;font-weight:700;margin-bottom:4px">🔴 大范围激光炮</div>
-            <div style="color:rgba(255,255,255,0.82);margin-bottom:10px">炮口泛红蓄力 2 秒 → 劈下宽幅红激光持续 2 秒，<span style="color:var(--amber)">风筝挡不住</span>，蓄力时<span style="color:var(--amber)">左右移开敌机正下方</span>躲避</div>
-            <div style="color:var(--teal);font-weight:700">🪁 清场规则</div>
-            <div style="color:rgba(255,255,255,0.82)">风筝撞上敌机能把它撞退出战场 —— <span style="color:var(--amber)">必须清光本波全部敌机，才能进入下一波</span>（共 5 波）</div>
+    <div id="l2-start-prompt" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;text-align:center;pointer-events:auto;width:min(600px,94vw)">
+        <div style="font-size:25px;font-weight:800;color:var(--amber);letter-spacing:5px;text-shadow:0 0 20px rgba(251,191,36,0.4);margin-bottom:10px">星际海盗火力封锁</div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:10px">选难度 · 选时长 · 挑战最高分</div>
+        <div id="l2-diff-select">
+            <div class="l2-diff-btn" id="l2-diff-1" role="button" title="弹幕更少更慢 · 激光更少 · 伤害更低" onclick="L2_selectDiff(1)">🌱 轻松</div>
+            <div class="l2-diff-btn sel" id="l2-diff-2" role="button" title="标准平衡手感" onclick="L2_selectDiff(2)">⚔ 标准</div>
+            <div class="l2-diff-btn" id="l2-diff-3" role="button" title="弹幕又密又快 · 激光频繁 · 伤害更高" onclick="L2_selectDiff(3)">🔥 地狱</div>
         </div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">方向键 ← → 左右移动 · 空格 发射太空风筝（风筝放出后自主飞行）</div>
-        <div style="font-size:18px;color:var(--teal);animation:l2startPulse 1.5s infinite">按 空格 开始</div>
+        <div id="l2-mode-select">
+            <div class="l2-mode-card" role="button" tabindex="0" onclick="L2_selectMode(1)">
+                <div class="mc-title">⚡ 3波</div>
+                <div class="mc-sub">快速战斗<br>约 1 分钟</div>
+                <div class="mc-best" id="l2-best-1"></div>
+            </div>
+            <div class="l2-mode-card" role="button" tabindex="0" onclick="L2_selectMode(2)">
+                <div class="mc-title">🛡 5波</div>
+                <div class="mc-sub">标准战役<br>完整体验</div>
+                <div class="mc-best" id="l2-best-2"></div>
+            </div>
+            <div class="l2-mode-card" role="button" tabindex="0" onclick="L2_selectMode(3)">
+                <div class="mc-title">♾ 无限</div>
+                <div class="mc-sub">无限波次<br>纯生存</div>
+                <div class="mc-best" id="l2-best-3"></div>
+            </div>
+        </div>
+        <div style="background:rgba(15,15,25,0.72);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:12px;line-height:1.8;color:var(--cream);text-align:left;margin-bottom:10px">
+            <div style="color:var(--coral);font-weight:700;margin-bottom:4px">🔫 连珠炮</div>
+            <div style="color:rgba(255,255,255,0.82);margin-bottom:8px">一次连发 7 颗子弹，弹幕又多又慢 —— <span style="color:var(--teal)">放太空风筝飞上去就能撞掉（风筝与子弹同归于尽）</span></div>
+            <div style="color:#f87171;font-weight:700;margin-bottom:4px">🔴 大范围激光炮</div>
+            <div style="color:rgba(255,255,255,0.82);margin-bottom:8px">炮口泛红蓄力 2 秒 → 劈下宽幅红激光持续 2 秒，<span style="color:var(--amber)">风筝挡不住</span>，蓄力时<span style="color:var(--amber)">左右移开敌机正下方</span>躲避</div>
+            <div style="color:var(--teal);font-weight:700">🪁 清场规则</div>
+            <div style="color:rgba(255,255,255,0.82)">风筝撞上敌机能把它撞退出战场 —— <span style="color:var(--amber)">必须清光本波全部敌机，才能进入下一波</span>（波数由所选模式决定）</div>
+        </div>
+        <div style="font-size:12px;color:var(--muted)">方向键 ← → 左右移动 · 空格 发射太空风筝 · 点击上方模式卡开始</div>
     </div>
 
     <div id="l2-tangbao-panel" class="tangbao-panel">
@@ -139,12 +172,12 @@ kbd{display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.08);borde
 
     <div class="pass-screen" id="l2-pass-screen">
         <div class="title">成功突围</div>
-        <div class="sub">五波敌机全部被太空风筝撞退出场，火力封锁突破，向第三关进发</div>
+        <div class="sub" id="l2-pass-sub"></div>
         <button onclick="location.href='level3.html'">继续 →</button>
     </div>
     <div class="fail-screen" id="l2-fail-screen">
         <div class="title">护盾耗尽</div>
-        <div class="sub">飞船护盾被火力击穿，被迫撤离防线</div>
+        <div class="sub" id="l2-fail-sub"></div>
         <button onclick="location.reload()">重新挑战</button>
     </div>
 </div>
@@ -394,6 +427,16 @@ function switchTo(viewName) {
     var canvas, ctx, W = 800, H = 600;
     var hp = 100, wave = 0, maxWave = 5;
     var gameStarted = false, gameOver = false;
+    var gameMode = 0;            // 1=3波 2=5波 3=无限
+    var diff = 2;                // 1=轻松 2=标准 3=地狱
+    var score = 0;               // 得分: 撞退敌机+撞掉子弹+清波奖励+通关护盾奖励
+    // 难度参数表: burst=连发数 bulletVY=弹速 atkBase/atkRand=攻击间隔 laserMul=激光概率倍率 dmg=伤害 waveCounts=每波敌机数 speedMul=移速倍率
+    var DIFFS = [
+        null,
+        { name:'轻松', burst:5,  bulletVY:2.6, atkBase:280, atkRand:130, laserMul:0.7,  dmgBullet:5,  dmgLaser:3, waveCounts:[0,2,2,3,3,4], speedMul:0.85 },
+        { name:'标准', burst:7,  bulletVY:3.3, atkBase:200, atkRand:110, laserMul:1.0,  dmgBullet:7,  dmgLaser:4, waveCounts:[0,2,3,3,4,5], speedMul:1.0 },
+        { name:'地狱', burst:9,  bulletVY:4.1, atkBase:150, atkRand:90,  laserMul:1.3,  dmgBullet:10, dmgLaser:6, waveCounts:[0,3,3,4,5,6], speedMul:1.15 }
+    ];
     var screenShake = 0, flashRed = 0, time = 0;
     var player = { x: 400, y: 520, speed: 6.5 };
     var enemies = [], eBullets = [], particles = [], kites = [];
@@ -424,21 +467,26 @@ function switchTo(viewName) {
     }
 
     // ---------- 波次(敌机不会自动撤退, 必须用太空风筝逐架撞退才能清场) ----------
+    // 难度缩放敌机数量/移速/激光概率; 无限模式第6波起数量与激光率持续爬升
     function spawnWave(n) {
+        var D = DIFFS[diff];
         wave = n; waveActive = true;
-        $('wave-info').textContent = '第 ' + n + ' / ' + maxWave + ' 波';
-        var count = [0,2,3,3,4,5][n] || 3;
+        $('wave-info').textContent = gameMode === 3 ? ('第 ' + n + ' 波 · 无限') : ('第 ' + n + ' / ' + maxWave + ' 波');
+        var count;
+        if (n <= 5) { count = D.waveCounts[n] || 3; }
+        else { count = Math.min(7, 5 + Math.floor((n - 4) / 2)); }   // 无限模式: 第6波起 5→6→6→7 封顶
+        var laserBase = n <= 2 ? 0.25 : n === 3 ? 0.4 : 0.55;
+        if (n > 5) laserBase = Math.min(0.8, 0.55 + (n - 5) * 0.05); // 无限模式: 激光概率持续爬升
         enemies = [];
         for (var i=0;i<count;i++){
-            var laserChance = n <= 2 ? 0.25 : n === 3 ? 0.4 : 0.55;
             enemies.push({
                 x: (W/(count+1))*(i+1), y: -70 - i*50, homeY: 96 + (i%2)*52,
                 w: 54, h: 42,
                 dir: Math.random()>0.5?1:-1,
-                moveSpeed: 0.7 + Math.random()*0.5 + n*0.06,
+                moveSpeed: (0.7 + Math.random()*0.5 + n*0.06) * D.speedMul,
                 enterSpeed: 1.1,
                 attackTimer: 150 + i*45 + Math.random()*70,
-                laserChance: laserChance,
+                laserChance: Math.min(0.85, laserBase * D.laserMul),
                 retreating: false, laser: null, burst: null
             });
         }
@@ -496,6 +544,7 @@ function switchTo(viewName) {
             }
             if (hitEnemy >= 0) {
                 var em = enemies[hitEnemy];
+                score += 100 + wave * 20;                 // 计分: 撞退敌机(波数越高分越多)
                 addParticles(em.x, em.y, '#fbbf24', 16);  // 敌机撞击光
                 addParticles(em.x, em.y, '#2dd4bf', 12);  // 风筝碎片
                 addParticles(em.x, em.y, '#ffffff', 6);
@@ -505,7 +554,7 @@ function switchTo(viewName) {
                 try { SFX.explode(); } catch(e){}
                 var left = enemies.length;
                 if (left > 0) {
-                    if (sayLock <= 0) { say('太空风筝一头撞上敌机——敌机被撞得翻滚着撤出战场！本波还剩 '+left+' 架，继续放风筝！'); sayLock=90; }
+                    if (sayLock <= 0) { say('+'+(100+wave*20)+' 太空风筝一头撞上敌机——敌机被撞得翻滚着撤出战场！本波还剩 '+left+' 架，继续放风筝！'); sayLock=90; }
                 } else {
                     if (sayLock <= 0) { say('最后一架敌机也被撞退，本波清场！', true); sayLock=90; }
                 }
@@ -516,6 +565,7 @@ function switchTo(viewName) {
                 var b = eBullets[j];
                 var dx = b.x - k.x, dy = b.y - k.y, rr = k.r + 5;
                 if (dx*dx + dy*dy < rr*rr) {
+                    score += 10;                          // 计分: 撞掉一颗子弹
                     var mx=(k.x+b.x)/2, my=(k.y+b.y)/2;
                     addParticles(mx,my,'#2dd4bf',9);   // 风筝碎片
                     addParticles(mx,my,'#ff6688',9);   // 炮弹火花
@@ -537,7 +587,7 @@ function switchTo(viewName) {
             e.laser = { phase:'charge', t:120 };  // 蓄力2秒, 激光从敌机正下方垂直射出
             say('⚠ 激光炮充能：敌机炮口泛红蓄力2秒，随后劈下宽幅红激光——风筝挡不住，蓄力时赶紧离开它正下方！', true);
         } else {
-            e.burst = { left: 7, timer: 0 };  // 连珠炮7连发(弹幕密集但飞得慢)
+            e.burst = { left: DIFFS[diff].burst, timer: 0 };  // 连珠炮(弹幕密集但飞得慢, 发数随难度)
             say('连珠炮开火：一长串子弹又多又慢地压下来——快放太空风筝飞上去撞掉它们！');
         }
     }
@@ -554,7 +604,7 @@ function switchTo(viewName) {
                 e.burst.timer--;
                 if (e.burst.timer <= 0 && e.burst.left > 0) {
                     var aim = Math.max(-1.4, Math.min(1.4, (player.x - e.x)/300));
-                    eBullets.push({ x: e.x, y: e.y + e.h/2, vx: aim, vy: 3.3 });  // 慢弹幕
+                    eBullets.push({ x: e.x, y: e.y + e.h/2, vx: aim, vy: DIFFS[diff].bulletVY });  // 慢弹幕(弹速随难度)
                     e.burst.left--; e.burst.timer = 11;
                     try { SFX.play(220,0.04,'square',0.05); } catch(err){}
                     if (e.burst.left <= 0) e.burst = null;
@@ -573,7 +623,7 @@ function switchTo(viewName) {
                 e.attackTimer--;
                 if (e.attackTimer <= 0) {
                     enemyAttack(e);
-                    e.attackTimer = 200 + Math.random()*110;
+                    e.attackTimer = DIFFS[diff].atkBase + Math.random()*DIFFS[diff].atkRand;
                 }
             }
         }
@@ -588,7 +638,7 @@ function switchTo(viewName) {
             b.x += b.vx; b.y += b.vy;
             if (b.y > H+20 || b.y < -20) { eBullets.splice(i,1); continue; }
             if (Math.abs(b.x - player.x) < 20 && Math.abs(b.y - player.y) < 20) {
-                hp -= 7; screenShake = 8; flashRed = 6;
+                hp -= DIFFS[diff].dmgBullet; screenShake = 8; flashRed = 6;
                 addParticles(player.x, player.y, '#ef4444', 6);
                 eBullets.splice(i,1);
                 if (hp <= 0) { hp=0; failGame(); }
@@ -606,7 +656,7 @@ function switchTo(viewName) {
             var L = e.laser, halfW = 46;
             // 飞船在光束内 → 持续扣护盾
             if (Math.abs(player.x - e.x) < halfW) {
-                if (L.t % 10 === 0) { hp -= 4; screenShake = 6; flashRed = 5; addParticles(player.x, player.y-10, '#ff3366', 3); if (hp<=0){hp=0;failGame();} }
+                if (L.t % 10 === 0) { hp -= DIFFS[diff].dmgLaser; screenShake = 6; flashRed = 5; addParticles(player.x, player.y-10, '#ff3366', 3); if (hp<=0){hp=0;failGame();} }
             }
             // 风筝飘入光束 → 被烧毁(同归于尽, 但光束持续不中断)
             for (var k=kites.length-1;k>=0;k--){
@@ -628,9 +678,25 @@ function switchTo(viewName) {
         }
     }
 
+    // ---------- 高分存取(按 模式+难度 分开记录) ----------
+    function hsKey() { return 'l2_highscore_' + (gameMode || 1) + '_' + diff; }
+    function getHighScore() {
+        try { return parseInt(localStorage.getItem(hsKey()) || '0', 10) || 0; } catch(e){ return 0; }
+    }
+    function saveHighScore(s) {
+        try {
+            var key = hsKey();
+            var old = parseInt(localStorage.getItem(key) || '0', 10) || 0;
+            if (s > old) { localStorage.setItem(key, String(s)); return true; }
+        } catch(e){}
+        return false;
+    }
+
     function failGame() {
         gameOver = true;
         addParticles(player.x, player.y, '#fbbf24', 20);
+        var isNew = saveHighScore(score);
+        $('fail-sub').innerHTML = '得分 <b style="color:var(--teal)">' + score + '</b>　最高 ' + getHighScore() + (isNew ? '　🏆 新纪录！' : '') + '<br>止步第 ' + wave + ' 波 · 难度 ' + DIFFS[diff].name;
         var fs = $('fail-screen');
         setTimeout(function(){ if (activeView==='level2') fs.classList.add('show'); }, 500);
     }
@@ -648,16 +714,21 @@ function switchTo(viewName) {
         if (flashRed>0) flashRed-=0.5;
         $('hp-fill').style.width = Math.max(0,hp) + '%';
         if (hp<30) $('hp-fill').classList.add('low'); else $('hp-fill').classList.remove('low');
+        $('score-info').textContent = '得分 ' + score;
 
         var noLaser = enemies.every(function(en){ return !en.laser; });
         if (waveActive && enemies.length===0 && eBullets.length===0 && noLaser) {
             waveActive = false;
+            score += 200 + Math.max(0, hp) * 2;   // 计分: 清波奖励 + 剩余护盾奖励
             if (wave >= maxWave) {
                 gameOver = true;
-                say('五波敌机全部被太空风筝撞退出场，火力封锁突破，成功突围！', true);
+                score += Math.max(0, hp) * 10;    // 通关护盾奖励
+                var isNew = saveHighScore(score);
+                $('pass-sub').innerHTML = '得分 <b style="color:var(--teal)">' + score + '</b>　最高 ' + getHighScore() + (isNew ? '　🏆 新纪录！' : '') + '<br>剩余护盾 ' + Math.max(0, hp) + ' · 难度 ' + DIFFS[diff].name + ' · 火力封锁突破，向第三关进发';
+                say('全部敌波被太空风筝撞退出场，火力封锁突破，成功突围！', true);
                 $('pass-screen').classList.add('show');
             } else {
-                say('本波敌机全部撞退，火力解除——准备下一波！', true);
+                say('本波敌机全部撞退，+'+(200 + Math.max(0,hp)*2)+' 分——准备下一波！', true);
                 waveDelay = 110;
             }
         }
@@ -755,9 +826,40 @@ function switchTo(viewName) {
 
     function startGame() {
         gameStarted=true;
+        score = 0;
         player.x=W/2; player.y=H-90;
+        $('score-info').textContent = '得分 0';
         spawnWave(1);
         $('start-prompt').style.display='none';
+    }
+
+    // ---------- 模式/难度选择(对齐 level4 交互) ----------
+    window.L2_selectMode = function(mode) {
+        if (gameStarted || gameOver) return;
+        gameMode = mode;
+        maxWave = mode === 1 ? 3 : mode === 2 ? 5 : Infinity;
+        try { SFX.click(); } catch(e){}
+        startGame();
+    };
+    window.L2_selectDiff = function(d) {
+        if (gameStarted || gameOver) return;
+        diff = d;
+        try { localStorage.setItem('l2_diff', String(d)); } catch(e){}
+        for (var i=1;i<=3;i++){
+            var el = document.getElementById('l2-diff-' + i);
+            if (el) el.classList.toggle('sel', i === d);
+        }
+        try { SFX.click(); } catch(e){}
+        loadHighScores();
+    };
+    // 读取 localStorage 高分并填充到模式卡片(跟随当前难度)
+    function loadHighScores() {
+        for (var m = 1; m <= 3; m++) {
+            var hs = 0;
+            try { hs = parseInt(localStorage.getItem('l2_highscore_' + m + '_' + diff) || '0', 10) || 0; } catch(e){}
+            var el = document.getElementById('l2-best-' + m);
+            if (el) el.textContent = hs > 0 ? '最高 ' + hs : '';
+        }
     }
 
     if (!window._l2keys) {
@@ -765,7 +867,7 @@ function switchTo(viewName) {
         window.addEventListener('keydown', function(e){
             if (activeView!=='level2') return;
             keys[e.key]=true;
-            if (e.key===' ') { e.preventDefault(); if (!gameStarted) startGame(); else launchKite(); }
+            if (e.key===' ') { e.preventDefault(); if (!gameStarted) { if (gameMode>0) startGame(); else say('先点一张模式卡片选择时长，再开始战斗！'); } else launchKite(); }
         });
         window.addEventListener('keyup', function(e){ if (activeView!=='level2') return; keys[e.key]=false; });
         window.addEventListener('resize', function(){ if (activeView!=='level2') return; resize(); });
@@ -775,8 +877,14 @@ function switchTo(viewName) {
         canvas=document.getElementById('canvas-l2');
         ctx=canvas.getContext('2d');
         if (rafId) cancelAnimationFrame(rafId);
-        hp=100; wave=0;
+        hp=100; wave=0; maxWave=5;
         gameStarted=false; gameOver=false;
+        gameMode=0; score=0;
+        try { var d = parseInt(localStorage.getItem('l2_diff')||'2',10); diff = (d>=1&&d<=3)?d:2; } catch(e){ diff=2; }
+        for (var i=1;i<=3;i++){
+            var dbtn = document.getElementById('l2-diff-' + i);
+            if (dbtn) dbtn.classList.toggle('sel', i === diff);
+        }
         screenShake=0; flashRed=0; time=0;
         enemies=[]; eBullets=[]; particles=[]; kites=[];
         kiteCd=0;
@@ -786,20 +894,21 @@ function switchTo(viewName) {
         $('pass-screen').classList.remove('show');
         $('fail-screen').classList.remove('show');
         $('hp-fill').style.width='100%'; $('hp-fill').classList.remove('low');
-        $('wave-info').textContent='第 1 / 5 波';
-        $('score-info').textContent='风筝就绪 · 空格发射';
+        $('wave-info').textContent='待命';
+        $('score-info').textContent='得分 0';
         $('kite-btn').classList.remove('cd'); $('kite-btn').classList.remove('active');
         $('wave-banner').classList.remove('show');
         $('start-prompt').style.display='';
-        $('tangbao-body').textContent='空格放太空风筝：撞掉连珠炮弹幕、撞退敌机！激光要走位躲！';
-        try { TangbaoVoice.speak('海盗火力封锁！连珠炮弹幕又多又慢，放太空风筝飞上去撞掉；激光炮风筝挡不住，蓄力时左右躲开。风筝撞上敌机就能把它撞退出场，清光本波全部敌机才能进入下一波，共五波！'); } catch(e){}
+        $('tangbao-body').textContent='选择难度和时长模式开始！空格放太空风筝：撞掉连珠炮弹幕、撞退敌机！激光要走位躲！';
+        try { TangbaoVoice.speak('海盗火力封锁！先选难度和时长模式开始挑战。连珠炮弹幕又多又慢，放太空风筝飞上去撞掉；激光炮风筝挡不住，蓄力时左右躲开。风筝撞上敌机就能把它撞退出场，清光本波全部敌机才能进入下一波！'); } catch(e){}
+        loadHighScores();
 
         if (canvas && !canvas._l2touch) {
             canvas._l2touch=true;
             canvas.addEventListener('touchstart', function(e){
                 if (activeView!=='level2') return;
                 e.preventDefault();
-                if (!gameStarted) { startGame(); return; }
+                if (!gameStarted) { if (gameMode>0) startGame(); return; }
                 var t=e.touches[0];
                 if (t.clientX<W/2) keys['ArrowLeft']=true; else keys['ArrowRight']=true;
                 launchKite();
