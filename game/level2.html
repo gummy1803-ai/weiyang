@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>第2关 · 星际海盗战 · 离谱星际穿越</title>
+<style>
+:root{
+    --bg:#0a0a14;
+    --panel:rgba(15,15,25,0.85);
+    --border:rgba(255,255,255,0.08);
+    --amber:#fbbf24;
+    --coral:#f87171;
+    --rose:#f472b6;
+    --teal:#2dd4bf;
+    --green:#22c55e;
+    --red:#ef4444;
+    --cream:#fef3c7;
+    --muted:#6b7280;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);overflow:hidden;font-family:"PingFang SC","Microsoft YaHei",sans-serif;color:var(--cream);user-select:none;-webkit-user-select:none}
+canvas{display:block}
+a{color:inherit}
+
+/* View switching */
+.view{position:absolute;inset:0;overflow:hidden}
+
+/* Game canvas common */
+.game-canvas{position:absolute;inset:0;width:100%;height:100%}
+
+/* Animation slot */
+.anim-slot{position:absolute;inset:0;z-index:50;display:none}
+.anim-slot.anim-active{display:block}
+.anim-wrapper{position:relative;width:100%;height:100%;background:#000}
+.anim-video{width:100%;height:100%;object-fit:contain}
+.anim-subtitle{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);padding:6px 16px;border-radius:8px;font-size:14px;color:rgba(255,255,255,0.85)}
+.anim-skip{position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);padding:6px 16px;border-radius:8px;font-size:13px;cursor:pointer;transition:all .2s}
+.anim-skip:hover{background:rgba(255,255,255,0.15);color:#fff}
+
+/* Common panels (converted from ID to class) */
+.tangbao-panel{position:absolute;top:20px;right:20px;width:220px;background:var(--panel);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);z-index:15}
+.tangbao-title{font-size:11px;font-weight:700;color:var(--amber);padding:8px 14px;border-bottom:1px solid var(--border);letter-spacing:1px}
+.tangbao-body{padding:10px 14px;font-size:11px;line-height:1.7;color:var(--cream);min-height:30px}
+
+.hp-bar{position:absolute;top:20px;left:20px;width:200px;z-index:15}
+.hp-label{font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:1px}
+.hp-track{height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden}
+.hp-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--amber));border-radius:4px;transition:width .3s;width:100%}
+.hp-fill.low{background:linear-gradient(90deg,var(--red),var(--coral))}
+
+.progress-bar{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:300px;z-index:15}
+.progress-label{font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:1px;text-align:center}
+.progress-track{height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--amber));border-radius:3px;transition:width .3s;width:0%}
+
+/* Dialog (converted from ID to class) */
+.dialog-overlay{position:absolute;inset:0;z-index:20;display:none}
+.dialog-overlay.show{display:flex;align-items:center;justify-content:center}
+.dialog-box{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px 32px;max-width:600px;width:90%;backdrop-filter:blur(12px);cursor:pointer}
+.dialog-speaker{font-size:12px;font-weight:700;margin-bottom:8px}
+.dialog-text{font-size:15px;line-height:1.8;color:var(--cream)}
+.dialog-hint{text-align:right;font-size:10px;color:var(--muted);margin-top:12px;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}
+
+/* Pass/Fail screens (already class-based) */
+.pass-screen,.fail-screen{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,0.9);opacity:0;pointer-events:none;transition:opacity .5s}
+.pass-screen.show,.fail-screen.show{opacity:1;pointer-events:auto}
+.pass-screen .title{font-size:36px;font-weight:800;background:linear-gradient(135deg,var(--amber),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:6px;margin-bottom:12px}
+.fail-screen .title{font-size:36px;font-weight:800;color:var(--red);letter-spacing:6px;margin-bottom:12px}
+.pass-screen .sub,.fail-screen .sub{font-size:13px;color:var(--muted);margin-bottom:30px;letter-spacing:2px}
+.pass-screen button,.fail-screen button{padding:12px 36px;background:transparent;border:1.5px solid var(--amber);border-radius:10px;color:var(--amber);font-size:14px;cursor:pointer;transition:all .25s;letter-spacing:2px}
+.pass-screen button:hover,.fail-screen button:hover{background:var(--amber);color:#000;transform:scale(1.05)}
+
+/* Screen flash (converted from ID to class) */
+.screen-flash{position:absolute;inset:0;pointer-events:none;z-index:25;opacity:0;transition:opacity .3s}
+
+/* Key hint */
+kbd{display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:4px;font-size:11px;font-family:monospace}
+
+/* ===== 第2关专属样式(星际海盗战) ===== */
+/* ================================================================
+   LEVEL 2 INLINE STYLES (IDs prefixed with l2-)
+   ================================================================ */
+#l2-wave-info{position:absolute;top:20px;left:50%;transform:translateX(-50%);font-size:14px;color:var(--amber);letter-spacing:3px;z-index:15}
+#l2-score-info{position:absolute;top:48px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted);z-index:15}
+#l2-kite-btn{position:absolute;top:60px;right:20px;width:60px;height:60px;border:2px solid var(--border);border-radius:50%;background:rgba(255,255,255,0.04);color:var(--teal);font-size:26px;cursor:pointer;transition:all .2s;z-index:15;display:flex;align-items:center;justify-content:center}
+#l2-kite-btn:hover{border-color:var(--teal);background:rgba(45,212,191,0.08)}
+#l2-kite-btn.cd{opacity:0.3;cursor:not-allowed}
+#l2-kite-btn.active{border-color:var(--teal);box-shadow:0 0 20px rgba(45,212,191,0.4);animation:l2kitePulse .5s infinite}
+@keyframes l2kitePulse{0%,100%{box-shadow:0 0 20px rgba(45,212,191,0.4)}50%{box-shadow:0 0 35px rgba(45,212,191,0.6)}}
+#l2-kite-label{position:absolute;top:128px;right:14px;font-size:10px;color:var(--muted);z-index:15;text-align:center;width:72px}
+#l2-powerup-info{position:absolute;bottom:80px;left:20px;z-index:15;font-size:12px;color:var(--teal)}
+#l2-wave-banner{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-size:36px;font-weight:800;color:var(--amber);text-shadow:0 0 30px rgba(251,191,36,0.4);z-index:20;opacity:0;transition:opacity .5s;letter-spacing:6px;pointer-events:none}
+#l2-wave-banner.show{opacity:1}
+@keyframes l2startPulse{0%,100%{opacity:0.5}50%{opacity:1}}
+
+
+</style>
+</head>
+<body>
+<div style="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:999;display:none;gap:8px;font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:12px;letter-spacing:1px;white-space:nowrap"><a href="level1.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">1·三道密码锁</a><a href="level2.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);background:rgba(251,191,36,0.22);border-color:#fbbf24;color:#fbbf24;font-weight:700;">2·星际海盗战</a><a href="level3.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">3·离谱星人盘问</a><a href="level4.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">4·穿越小行星带</a><a href="level5.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">5·卡冈图雅黑洞</a></div>
+<div id="view-level2" class="view" style="display:none">
+    <canvas id="canvas-l2" class="game-canvas"></canvas>
+    <div id="l2-screen-flash" class="screen-flash"></div>
+
+    <div id="l2-anim-pre" class="anim-slot"></div>
+    <div id="l2-anim-post" class="anim-slot"></div>
+
+    <div id="l2-hp-bar" class="hp-bar">
+        <div id="l2-hp-label" class="hp-label">飞船护盾</div>
+        <div id="l2-hp-track" class="hp-track"><div id="l2-hp-fill" class="hp-fill"></div></div>
+    </div>
+    <div id="l2-wave-info">第 1 / 5 波</div>
+    <div id="l2-score-info">风筝就绪 · 空格发射</div>
+    <button id="l2-kite-btn" onclick="L2_launchKite()">🪁</button>
+    <div id="l2-kite-label">太空风筝<br>空格 · 防御</div>
+    <div id="l2-powerup-info"></div>
+    <div id="l2-wave-banner"></div>
+    <div id="l2-start-prompt" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:20;text-align:center;pointer-events:none;width:min(560px,92vw)">
+        <div style="font-size:26px;font-weight:800;color:var(--amber);letter-spacing:5px;text-shadow:0 0 20px rgba(251,191,36,0.4);margin-bottom:14px">星际海盗火力封锁</div>
+        <div style="background:rgba(15,15,25,0.72);border:1px solid var(--border);border-radius:12px;padding:12px 16px;font-size:13px;line-height:1.9;color:var(--cream);text-align:left;margin-bottom:14px">
+            <div style="color:var(--coral);font-weight:700;margin-bottom:4px">🔫 连珠炮</div>
+            <div style="color:rgba(255,255,255,0.82);margin-bottom:10px">一次连发 7 颗子弹，弹幕又多又慢 —— <span style="color:var(--teal)">放太空风筝飞上去就能撞掉（风筝与子弹同归于尽）</span></div>
+            <div style="color:#f87171;font-weight:700;margin-bottom:4px">🔴 大范围激光炮</div>
+            <div style="color:rgba(255,255,255,0.82);margin-bottom:10px">炮口泛红蓄力 2 秒 → 劈下宽幅红激光持续 2 秒，<span style="color:var(--amber)">风筝挡不住</span>，蓄力时<span style="color:var(--amber)">左右移开敌机正下方</span>躲避</div>
+            <div style="color:var(--teal);font-weight:700">🪁 清场规则</div>
+            <div style="color:rgba(255,255,255,0.82)">风筝撞上敌机能把它撞退出战场 —— <span style="color:var(--amber)">必须清光本波全部敌机，才能进入下一波</span>（共 5 波）</div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">方向键 ← → 左右移动 · 空格 发射太空风筝（风筝放出后自主飞行）</div>
+        <div style="font-size:18px;color:var(--teal);animation:l2startPulse 1.5s infinite">按 空格 开始</div>
+    </div>
+
+    <div id="l2-tangbao-panel" class="tangbao-panel">
+        <div id="l2-tangbao-title" class="tangbao-title">糖包助手</div>
+        <div id="l2-tangbao-body" class="tangbao-body">空格放太空风筝：撞掉弹幕、撞退敌机清场！激光记得走位躲！</div>
+    </div>
+
+    <div class="pass-screen" id="l2-pass-screen">
+        <div class="title">成功突围</div>
+        <div class="sub">五波敌机全部被太空风筝撞退出场，火力封锁突破，向第三关进发</div>
+        <button onclick="location.href='level3.html'">继续 →</button>
+    </div>
+    <div class="fail-screen" id="l2-fail-screen">
+        <div class="title">护盾耗尽</div>
+        <div class="sub">飞船护盾被火力击穿，被迫撤离防线</div>
+        <button onclick="location.reload()">重新挑战</button>
+    </div>
+</div>
+
+<script>
+// 静默预览环境注入脚本残留错误(来源<anonymous>的"is not defined"), 游戏真实错误照常抛出
+(function(){
+  var _oe = window.onerror;
+  window.onerror = function(msg, src, line, col, err){
+    if (!src && typeof msg === 'string' && /is not defined$/.test(msg) && line <= 1) return true;
+    if (_oe) return _oe.apply(this, arguments);
+  };
+})();
+// ================================================================
+// COMMON.JS  (AnimSlot / GameUI / SFX)
+// ================================================================
+// ================================================================
+// COMMON.JS  (AnimSlot, GameUI, SFX)
+// ================================================================
+
+/**
+ * 通用动画插槽系统
+ */
+const AnimSlot = {
+    current: null,
+
+    play(containerId, videoSrc, opts = {}) {
+        return new Promise((resolve) => {
+            const container = document.getElementById(containerId);
+            if (!container || !videoSrc) {
+                resolve();
+                return;
+            }
+
+            container.innerHTML = '';
+            container.classList.add('anim-active');
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'anim-wrapper';
+
+            const video = document.createElement('video');
+            video.src = videoSrc;
+            video.autoplay = true;
+            video.playsInline = true;
+            video.className = 'anim-video';
+
+            if (opts.subtitle) {
+                const sub = document.createElement('div');
+                sub.className = 'anim-subtitle';
+                sub.textContent = opts.subtitle;
+                wrapper.appendChild(sub);
+            }
+
+            if (opts.skip !== false) {
+                const skipBtn = document.createElement('button');
+                skipBtn.className = 'anim-skip';
+                skipBtn.textContent = '跳过 →';
+                skipBtn.onclick = () => {
+                    container.classList.remove('anim-active');
+                    container.innerHTML = '';
+                    AnimSlot.current = null;
+                    resolve();
+                };
+                wrapper.appendChild(skipBtn);
+            }
+
+            wrapper.appendChild(video);
+            container.appendChild(wrapper);
+            AnimSlot.current = { container, resolve };
+
+            video.onended = () => {
+                container.classList.remove('anim-active');
+                container.innerHTML = '';
+                AnimSlot.current = null;
+                resolve();
+            };
+
+            video.onerror = () => {
+                container.classList.remove('anim-active');
+                container.innerHTML = '';
+                AnimSlot.current = null;
+                resolve();
+            };
+        });
+    },
+
+    skip() {
+        if (AnimSlot.current) {
+            const { container, resolve } = AnimSlot.current;
+            container.classList.remove('anim-active');
+            container.innerHTML = '';
+            AnimSlot.current = null;
+            resolve();
+        }
+    }
+};
+
+/**
+ * 通用UI组件
+ */
+const GameUI = {
+    createTangbao(title, msg) {
+        return `
+            <div id="tangbao-panel">
+                <div id="tangbao-title">${title || '糖包助手'}</div>
+                <div id="tangbao-body">${msg || ''}</div>
+            </div>
+        `;
+    },
+
+    createHPBar(label) {
+        return `
+            <div id="hp-bar">
+                <div id="hp-label">${label || 'HP'}</div>
+                <div id="hp-track"><div id="hp-fill"></div></div>
+            </div>
+        `;
+    },
+
+    createProgressBar(label) {
+        return `
+            <div id="progress-bar">
+                <div id="progress-label">${label || '进度'}</div>
+                <div id="progress-track"><div id="progress-fill"></div></div>
+            </div>
+        `;
+    }
+};
+
+/**
+ * 通用音效系统（Web Audio API）
+ */
+const SFX = {
+    ctx: null,
+
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+    },
+
+    play(freq, dur, type = 'square', vol = 0.15) {
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + dur);
+    },
+
+    sweep(f1, f2, dur, type = 'sawtooth', vol = 0.12) {
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(f1, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(f2, this.ctx.currentTime + dur);
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + dur);
+    },
+
+    noise(dur, vol = 0.08) {
+        this.init();
+        const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate * dur, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        const src = this.ctx.createBufferSource();
+        src.buffer = buffer;
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+        src.connect(gain);
+        gain.connect(this.ctx.destination);
+        src.start();
+    },
+
+    shoot() { this.sweep(800, 200, 0.08, 'square', 0.1); },
+    hit() { this.sweep(400, 80, 0.15, 'sawtooth', 0.12); },
+    explode() { this.noise(0.25, 0.1); this.sweep(200, 50, 0.3, 'sawtooth', 0.08); },
+    pickup() { this.play(660, 0.1); setTimeout(() => this.play(880, 0.15), 80); },
+    click() { this.play(440, 0.05, 'sine', 0.08); },
+    success() { this.play(523, 0.12); setTimeout(() => this.play(659, 0.12), 100); setTimeout(() => this.play(784, 0.2), 200); },
+    fail() { this.sweep(220, 110, 0.3, 'square', 0.1); },
+    dot() { this.play(600, 0.08, 'sine', 0.12); },
+    dash() { this.play(400, 0.25, 'sine', 0.12); },
+};
+
+/**
+ * \u7cd6\u5305\u8bed\u97f3\u63d0\u793a\u7cfb\u7edf\uff08Web Speech API\uff09
+ */
+var TangbaoVoice = {
+    speak: function(text) {
+        try {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            var u = new SpeechSynthesisUtterance(text);
+            u.lang = 'zh-CN';
+            u.rate = 1.3;
+            u.pitch = 1.3;
+            u.volume = 0.8;
+            window.speechSynthesis.speak(u);
+        } catch(e) {}
+    },
+    stop: function() {
+        try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e) {}
+    }
+};
+
+// ================================================================
+// VIEW SWITCHING SYSTEM
+// ================================================================
+// ================================================================
+// VIEW SWITCHING SYSTEM
+// ================================================================
+let activeView = null;
+const levelInits = {};
+
+function switchTo(viewName) {
+    // Hide all views
+    document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+    // Show target view
+    const view = document.getElementById('view-' + viewName);
+    if (view) view.style.display = 'block';
+    activeView = viewName;
+    // Call init function for that view
+    if (levelInits[viewName]) levelInits[viewName]();
+}
+
+// ================================================================
+// LEVEL 2 - 星际海盗战
+// ================================================================
+// ================================================================
+// LEVEL 2 - Space Shooter (Simplified & Robust)
+// ================================================================
+(function() {
+    var $ = function(id) { var el = document.getElementById('l2-' + id); return el || {textContent:'',style:{},classList:{add:function(){},remove:function(){},contains:function(){return false}}}; };
+    var canvas, ctx, W = 800, H = 600;
+    var hp = 100, wave = 0, maxWave = 5;
+    var gameStarted = false, gameOver = false;
+    var screenShake = 0, flashRed = 0, time = 0;
+    var player = { x: 400, y: 520, speed: 6.5 };
+    var enemies = [], eBullets = [], particles = [], kites = [];
+    var kiteCd = 0;
+    var KITE_LAUNCH_CD = 32;   // 连放冷却约 0.5s(允许多风筝同时在场)
+    var keys = {};
+    var waveDelay = 0, waveActive = false;
+    var rafId = null, sayLock = 0;
+
+    function resize() {
+        if (!canvas) return;
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+        player.y = H - 90;
+    }
+
+    function say(msg, voice) {
+        $('tangbao-body').textContent = msg;
+        if (voice) { try { TangbaoVoice.speak(msg); } catch(e){} }
+    }
+    function showBanner(txt) {
+        var b = $('wave-banner');
+        b.textContent = txt; b.classList.add('show');
+        setTimeout(function(){ b.classList.remove('show'); }, 1600);
+    }
+    function addParticles(x, y, color, n) {
+        for (var i=0;i<n;i++){ particles.push({ x:x,y:y,vx:(Math.random()-0.5)*6,vy:(Math.random()-0.5)*6,life:1,color:color,size:2+Math.random()*3 }); }
+    }
+
+    // ---------- 波次(敌机不会自动撤退, 必须用太空风筝逐架撞退才能清场) ----------
+    function spawnWave(n) {
+        wave = n; waveActive = true;
+        $('wave-info').textContent = '第 ' + n + ' / ' + maxWave + ' 波';
+        var count = [0,2,3,3,4,5][n] || 3;
+        enemies = [];
+        for (var i=0;i<count;i++){
+            var laserChance = n <= 2 ? 0.25 : n === 3 ? 0.4 : 0.55;
+            enemies.push({
+                x: (W/(count+1))*(i+1), y: -70 - i*50, homeY: 96 + (i%2)*52,
+                w: 54, h: 42,
+                dir: Math.random()>0.5?1:-1,
+                moveSpeed: 0.7 + Math.random()*0.5 + n*0.06,
+                enterSpeed: 1.1,
+                attackTimer: 150 + i*45 + Math.random()*70,
+                laserChance: laserChance,
+                retreating: false, laser: null, burst: null
+            });
+        }
+        showBanner('第 ' + n + ' 波');
+        say('第' + n + '波敌机来袭！放太空风筝飞上去——风筝能撞退敌机、撞掉弹幕，清光本波才能进入下一波！', true);
+    }
+
+    // ---------- 太空风筝(自主飞行拦截体) ----------
+    // 一旦放出即自主飞行(受风力+重力), 玩家不可再控制; 撞上子弹与子弹同归于尽
+    function launchKite() {
+        if (!gameStarted || gameOver) return;
+        if (kiteCd > 0) return;
+        var dir = (keys['ArrowRight']||keys['d']||keys['D']) ? 1 : (keys['ArrowLeft']||keys['a']||keys['A']) ? -1 : 0;
+        // 初速按屏高反推, 让风筝抛物线顶点恰好抬升到敌机带(约 y≈120), 之后缓落继续挡弹
+        var apexH = Math.max(360, player.y - 120);
+        var upV = -Math.sqrt(2 * 0.022 * apexH);
+        kites.push({
+            x: player.x, y: player.y - 24,
+            vx: dir * 1.4,          // 按住方向可把风筝朝敌机方向偏移
+            vy: upV,                // 释放初速: 上升到敌机高度后缓降
+            r: 26, life: 720, rot: 0
+        });
+        kiteCd = KITE_LAUNCH_CD;
+        $('kite-btn').classList.add('cd');
+        try { SFX.play(600,0.08,'sine',0.08); } catch(e){}
+        if (sayLock <= 0) { say('太空风筝放出去啦——自主飞上去，撞掉弹幕、撞退敌机！'); sayLock=70; }
+    }
+    window.L2_launchKite = launchKite;
+
+    function updateKites() {
+        if (kiteCd > 0) { kiteCd--; if (kiteCd === 0) $('kite-btn').classList.remove('cd'); }
+        var wind = Math.sin(time * 0.018) * 0.018;  // 全局风力: 左右轻拂(较弱, 不吹飞)
+        for (var i=kites.length-1;i>=0;i--){
+            var k = kites[i];
+            // —— 物理运动: 弱风力 + 随机气流 + 重力(初速向上, 升到敌弹高度后缓降悬浮) ——
+            k.vx += wind + (Math.random()-0.5)*0.03;
+            k.vy += 0.022;                        // 重力(初速按屏高反推, 顶点在敌机带, 之后缓降)
+            k.vx *= 0.97;                         // 空气阻尼(水平稳态漂移很慢)
+            k.x += k.vx; k.y += k.vy;
+            k.rot += 0.06;
+            k.life--;
+            // 寿命到/飞出屏幕 → 飘散消失
+            if (k.life <= 0 || k.y < -60 || k.x < -60 || k.x > W+60 || k.y > H+60) {
+                addParticles(k.x, k.y, '#2dd4bf', 4);
+                kites.splice(i,1);
+                continue;
+            }
+            // —— 碰撞检测①: 风筝 × 敌机 → 风筝撞退敌机(同归于尽, 敌机退出战场) ——
+            var hitEnemy = -1;
+            for (var ei=0; ei<enemies.length; ei++){
+                var en = enemies[ei];
+                var ex = en.x - k.x, ey = en.y - k.y;
+                var er = k.r + en.w*0.55;   // 敌机判定半径(宽大, 好撞)
+                if (ex*ex + ey*ey < er*er) { hitEnemy = ei; break; }
+            }
+            if (hitEnemy >= 0) {
+                var em = enemies[hitEnemy];
+                addParticles(em.x, em.y, '#fbbf24', 16);  // 敌机撞击光
+                addParticles(em.x, em.y, '#2dd4bf', 12);  // 风筝碎片
+                addParticles(em.x, em.y, '#ffffff', 6);
+                screenShake = 10;
+                enemies.splice(hitEnemy, 1);              // 敌机退出战场
+                kites.splice(i,1);                        // 风筝消耗
+                try { SFX.explode(); } catch(e){}
+                var left = enemies.length;
+                if (left > 0) {
+                    if (sayLock <= 0) { say('太空风筝一头撞上敌机——敌机被撞得翻滚着撤出战场！本波还剩 '+left+' 架，继续放风筝！'); sayLock=90; }
+                } else {
+                    if (sayLock <= 0) { say('最后一架敌机也被撞退，本波清场！', true); sayLock=90; }
+                }
+                continue;
+            }
+            // —— 碰撞检测②: 风筝 × 连珠炮弹(圆形相交) → 相互抵消 ——
+            for (var j=eBullets.length-1;j>=0;j--){
+                var b = eBullets[j];
+                var dx = b.x - k.x, dy = b.y - k.y, rr = k.r + 5;
+                if (dx*dx + dy*dy < rr*rr) {
+                    var mx=(k.x+b.x)/2, my=(k.y+b.y)/2;
+                    addParticles(mx,my,'#2dd4bf',9);   // 风筝碎片
+                    addParticles(mx,my,'#ff6688',9);   // 炮弹火花
+                    addParticles(mx,my,'#ffffff',5);   // 中心闪光
+                    eBullets.splice(j,1);              // 子弹清除
+                    kites.splice(i,1);                 // 风筝清除(同归于尽)
+                    try { SFX.play(300,0.12,'square',0.09); } catch(e){}
+                    if (sayLock <= 0) { say('太空风筝迎头撞上炮弹——啪，风筝和炮弹同归于尽！'); sayLock=80; }
+                    break;
+                }
+            }
+        }
+        $('kite-btn').classList.toggle('active', kites.length > 0);
+    }
+
+    // ---------- 敌机两种攻击 ----------
+    function enemyAttack(e) {
+        if (Math.random() < e.laserChance) {
+            e.laser = { phase:'charge', t:120 };  // 蓄力2秒, 激光从敌机正下方垂直射出
+            say('⚠ 激光炮充能：敌机炮口泛红蓄力2秒，随后劈下宽幅红激光——风筝挡不住，蓄力时赶紧离开它正下方！', true);
+        } else {
+            e.burst = { left: 7, timer: 0 };  // 连珠炮7连发(弹幕密集但飞得慢)
+            say('连珠炮开火：一长串子弹又多又慢地压下来——快放太空风筝飞上去撞掉它们！');
+        }
+    }
+
+    function updateEnemies() {
+        for (var i=0;i<enemies.length;i++){
+            var e = enemies[i];
+            if (e.retreating) { e.y -= 2.2; e.x += e.dir*0.5; continue; }
+            if (e.y < e.homeY) { e.y += e.enterSpeed; continue; }
+            e.x += e.dir * e.moveSpeed;
+            if (e.x < 60 || e.x > W-60) e.dir *= -1;
+
+            if (e.burst) {
+                e.burst.timer--;
+                if (e.burst.timer <= 0 && e.burst.left > 0) {
+                    var aim = Math.max(-1.4, Math.min(1.4, (player.x - e.x)/300));
+                    eBullets.push({ x: e.x, y: e.y + e.h/2, vx: aim, vy: 3.3 });  // 慢弹幕
+                    e.burst.left--; e.burst.timer = 11;
+                    try { SFX.play(220,0.04,'square',0.05); } catch(err){}
+                    if (e.burst.left <= 0) e.burst = null;
+                }
+            }
+
+            if (e.laser) {
+                var L = e.laser; L.t--;
+                if (L.phase === 'charge' && L.t <= 0) {
+                    L.phase = 'fire'; L.t = 120;  // 持续2秒
+                    say('激光炮轰下：宽幅红色激光持续2秒，被扫到持续掉护盾——快左右移开！');
+                    try { SFX.play(140,0.3,'sawtooth',0.12); } catch(err){}
+                } else if (L.phase === 'fire' && L.t <= 0) { e.laser = null; }
+            } else if (!e.burst) {
+                // 敌机无限开火, 直到被太空风筝撞退为止
+                e.attackTimer--;
+                if (e.attackTimer <= 0) {
+                    enemyAttack(e);
+                    e.attackTimer = 200 + Math.random()*110;
+                }
+            }
+        }
+        for (var j=enemies.length-1;j>=0;j--){ if (enemies[j].retreating && enemies[j].y < -120) enemies.splice(j,1); }
+    }
+
+    // ---------- 子弹(击中飞船) ----------
+    // 子弹被自主飞行的风筝碰撞抵消的逻辑在 updateKites 中处理
+    function updateBullets() {
+        for (var i=eBullets.length-1;i>=0;i--){
+            var b = eBullets[i];
+            b.x += b.vx; b.y += b.vy;
+            if (b.y > H+20 || b.y < -20) { eBullets.splice(i,1); continue; }
+            if (Math.abs(b.x - player.x) < 20 && Math.abs(b.y - player.y) < 20) {
+                hp -= 7; screenShake = 8; flashRed = 6;
+                addParticles(player.x, player.y, '#ef4444', 6);
+                eBullets.splice(i,1);
+                if (hp <= 0) { hp=0; failGame(); }
+            }
+        }
+    }
+
+    // ---------- 激光(持续光束, 无法被风筝截断; 飞船走位躲避) ----------
+    // 激光从敌机正下方垂直射出(e.x); 持续光束风筝挡不住, 只能把飞船移开
+    // 风筝若自主飘进光束会被烧毁(同激光内子弹般移除), 提醒玩家激光要躲
+    function updateLasers() {
+        for (var i=0;i<enemies.length;i++){
+            var e = enemies[i];
+            if (!e.laser || e.laser.phase !== 'fire') continue;
+            var L = e.laser, halfW = 46;
+            // 飞船在光束内 → 持续扣护盾
+            if (Math.abs(player.x - e.x) < halfW) {
+                if (L.t % 10 === 0) { hp -= 4; screenShake = 6; flashRed = 5; addParticles(player.x, player.y-10, '#ff3366', 3); if (hp<=0){hp=0;failGame();} }
+            }
+            // 风筝飘入光束 → 被烧毁(同归于尽, 但光束持续不中断)
+            for (var k=kites.length-1;k>=0;k--){
+                var kt = kites[k];
+                if (Math.abs(kt.x - e.x) < halfW && kt.y > e.y) {
+                    addParticles(kt.x, kt.y, '#ff6688', 8);
+                    addParticles(kt.x, kt.y, '#2dd4bf', 4);
+                    kites.splice(k,1);
+                }
+            }
+        }
+    }
+
+    function updateParticles() {
+        for (var i=particles.length-1;i>=0;i--){
+            var p=particles[i];
+            p.x+=p.vx; p.y+=p.vy; p.vx*=0.95; p.vy*=0.95; p.life-=0.02;
+            if (p.life<=0) particles.splice(i,1);
+        }
+    }
+
+    function failGame() {
+        gameOver = true;
+        addParticles(player.x, player.y, '#fbbf24', 20);
+        var fs = $('fail-screen');
+        setTimeout(function(){ if (activeView==='level2') fs.classList.add('show'); }, 500);
+    }
+
+    function update() {
+        if (!gameStarted || gameOver) return;
+        if (sayLock>0) sayLock--;
+        if (keys['ArrowLeft']||keys['a']||keys['A']) player.x -= player.speed;
+        if (keys['ArrowRight']||keys['d']||keys['D']) player.x += player.speed;
+        player.x = Math.max(34, Math.min(W-34, player.x));
+
+        updateKites(); updateEnemies(); updateBullets(); updateLasers(); updateParticles();
+
+        if (screenShake>0) screenShake-=0.5;
+        if (flashRed>0) flashRed-=0.5;
+        $('hp-fill').style.width = Math.max(0,hp) + '%';
+        if (hp<30) $('hp-fill').classList.add('low'); else $('hp-fill').classList.remove('low');
+
+        var noLaser = enemies.every(function(en){ return !en.laser; });
+        if (waveActive && enemies.length===0 && eBullets.length===0 && noLaser) {
+            waveActive = false;
+            if (wave >= maxWave) {
+                gameOver = true;
+                say('五波敌机全部被太空风筝撞退出场，火力封锁突破，成功突围！', true);
+                $('pass-screen').classList.add('show');
+            } else {
+                say('本波敌机全部撞退，火力解除——准备下一波！', true);
+                waveDelay = 110;
+            }
+        }
+        if (waveDelay > 0) { waveDelay--; if (waveDelay === 0 && wave < maxWave) spawnWave(wave+1); }
+    }
+
+    function render() {
+        if (activeView !== 'level2') { rafId = null; return; }
+        time++;
+        ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+        var bgGrad = ctx.createRadialGradient(W*0.5,H*0.5,0,W*0.5,H*0.5,Math.max(W,H)*0.6);
+        bgGrad.addColorStop(0,'rgba(130,80,220,0.06)'); bgGrad.addColorStop(0.5,'rgba(20,5,40,0.03)'); bgGrad.addColorStop(1,'rgba(0,0,0,0)');
+        ctx.fillStyle = bgGrad; ctx.fillRect(0,0,W,H);
+
+        ctx.save();
+        if (screenShake>0) ctx.translate((Math.random()-0.5)*screenShake,(Math.random()-0.5)*screenShake);
+
+        for (var si=0;si<100;si++){ var sx=(si*211+time*0.15)%(W+100)-50; var sy=(si*373)%H; ctx.fillStyle='rgba(255,255,255,'+(0.15+(si%4)*0.15)+')'; var ss=si%3===0?2:1; ctx.fillRect(sx,sy,ss,ss); }
+        for (var si2=0;si2<30;si2++){ var sx2=(si2*431+time*0.4)%(W+100)-50; var sy2=(si2*127)%H; ctx.fillStyle='rgba(221,221,255,'+(0.4+Math.sin(time*0.02+si2)*0.2)+')'; ctx.beginPath(); ctx.arc(sx2,sy2,1.5,0,Math.PI*2); ctx.fill(); }
+
+        for (var i=0;i<particles.length;i++){ var p=particles[i]; ctx.globalAlpha=p.life; ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2); ctx.fill(); }
+        ctx.globalAlpha=1;
+
+        for (var i=0;i<enemies.length;i++){
+            var e=enemies[i];
+            ctx.save(); ctx.translate(e.x,e.y);
+            var charging = e.laser && e.laser.phase==='charge';
+            var firing = e.laser && e.laser.phase==='fire';
+            ctx.fillStyle = firing ? '#ff2244' : '#cc4477';
+            ctx.shadowBlur = firing?16:(charging?10:6); ctx.shadowColor='rgba(255,51,102,0.6)';
+            ctx.beginPath();
+            ctx.moveTo(0,e.h/2); ctx.lineTo(-e.w/2,-e.h/4); ctx.lineTo(-e.w/3,-e.h/2);
+            ctx.lineTo(e.w/3,-e.h/2); ctx.lineTo(e.w/2,-e.h/4); ctx.closePath(); ctx.fill();
+            ctx.shadowBlur=0;
+            ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0,-2,5,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle='#000'; ctx.fillRect(-2,-4,1.5,1.5); ctx.fillRect(0.5,-4,1.5,1.5);
+            if (charging) { var pu=0.5+0.5*Math.sin(time*0.4); ctx.fillStyle='rgba(255,40,70,'+(0.5+pu*0.5)+')'; ctx.beginPath(); ctx.arc(0,e.h/2+6,8+pu*8,0,Math.PI*2); ctx.fill(); }
+            ctx.restore();
+
+            if (e.laser) {
+                var L=e.laser, halfW=46;
+                if (L.phase==='charge') {
+                    ctx.save();
+                    ctx.strokeStyle='rgba(255,60,90,'+(0.3+0.3*Math.sin(time*0.4))+')';
+                    ctx.lineWidth=2; ctx.setLineDash([10,10]);
+                    ctx.beginPath(); ctx.moveTo(e.x,e.y); ctx.lineTo(e.x,H); ctx.stroke();
+                    ctx.restore();
+                } else {
+                    var bottom = H;
+                    var grd = ctx.createLinearGradient(0,e.y,0,bottom);
+                    grd.addColorStop(0,'rgba(255,60,90,0.85)'); grd.addColorStop(1,'rgba(255,40,70,0.35)');
+                    ctx.fillStyle=grd; ctx.shadowBlur=24; ctx.shadowColor='rgba(255,50,80,0.7)';
+                    ctx.fillRect(e.x-halfW, e.y, halfW*2, bottom-e.y);
+                    ctx.shadowBlur=0;
+                    ctx.fillStyle='rgba(255,220,225,0.8)'; ctx.fillRect(e.x-4,e.y,8,bottom-e.y);
+                }
+            }
+        }
+
+        ctx.fillStyle='#ff3366'; ctx.shadowBlur=6; ctx.shadowColor='rgba(255,51,102,0.6)';
+        for (var i=0;i<eBullets.length;i++){ ctx.beginPath(); ctx.arc(eBullets[i].x,eBullets[i].y,4.5,0,Math.PI*2); ctx.fill(); }
+        ctx.shadowBlur=0;
+
+        // 自主飞行的太空风筝群(无连线, 放出后不受控; 随旋转轻摆 + 飘尾)
+        for (var ki=0;ki<kites.length;ki++){
+            var kt = kites[ki];
+            ctx.save(); ctx.translate(kt.x,kt.y); ctx.rotate(Math.sin(kt.rot)*0.28);
+            ctx.fillStyle='#2dd4bf';
+            ctx.shadowBlur=12; ctx.shadowColor='rgba(45,212,191,0.7)';
+            ctx.beginPath(); ctx.moveTo(0,-20); ctx.lineTo(19,0); ctx.lineTo(0,16); ctx.lineTo(-19,0); ctx.closePath(); ctx.fill();
+            ctx.shadowBlur=0;
+            ctx.strokeStyle='rgba(255,255,255,0.6)'; ctx.lineWidth=1.5;
+            ctx.beginPath(); ctx.moveTo(0,-20); ctx.lineTo(0,16); ctx.moveTo(-19,0); ctx.lineTo(19,0); ctx.stroke();
+            ctx.strokeStyle='rgba(45,212,191,0.55)'; ctx.lineWidth=1.5;
+            ctx.beginPath(); ctx.moveTo(0,16); ctx.quadraticCurveTo(Math.sin(kt.rot*1.6)*8,30, Math.sin(kt.rot*1.6)*5,42); ctx.stroke();
+            ctx.restore();
+        }
+
+        if (!gameOver) {
+            ctx.save(); ctx.translate(player.x,player.y);
+            ctx.fillStyle='#fbbf24';
+            ctx.beginPath(); ctx.moveTo(-6,20); ctx.lineTo(0,28+Math.random()*6); ctx.lineTo(6,20); ctx.fill();
+            ctx.fillStyle='#2dd4bf';
+            ctx.beginPath(); ctx.moveTo(0,-22); ctx.lineTo(-16,16); ctx.lineTo(-8,20); ctx.lineTo(8,20); ctx.lineTo(16,16); ctx.closePath(); ctx.fill();
+            ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.arc(0,-5,5,0,Math.PI*2); ctx.fill();
+            ctx.restore();
+        }
+
+        ctx.restore();
+        if (flashRed>0) { ctx.fillStyle='rgba(255,30,60,'+(flashRed/6*0.18)+')'; ctx.fillRect(0,0,W,H); }
+
+        if (gameStarted && !gameOver) update();
+        rafId = requestAnimationFrame(render);
+    }
+
+    function startGame() {
+        gameStarted=true;
+        player.x=W/2; player.y=H-90;
+        spawnWave(1);
+        $('start-prompt').style.display='none';
+    }
+
+    if (!window._l2keys) {
+        window._l2keys=true;
+        window.addEventListener('keydown', function(e){
+            if (activeView!=='level2') return;
+            keys[e.key]=true;
+            if (e.key===' ') { e.preventDefault(); if (!gameStarted) startGame(); else launchKite(); }
+        });
+        window.addEventListener('keyup', function(e){ if (activeView!=='level2') return; keys[e.key]=false; });
+        window.addEventListener('resize', function(){ if (activeView!=='level2') return; resize(); });
+    }
+
+    levelInits['level2'] = function init() {
+        canvas=document.getElementById('canvas-l2');
+        ctx=canvas.getContext('2d');
+        if (rafId) cancelAnimationFrame(rafId);
+        hp=100; wave=0;
+        gameStarted=false; gameOver=false;
+        screenShake=0; flashRed=0; time=0;
+        enemies=[]; eBullets=[]; particles=[]; kites=[];
+        kiteCd=0;
+        keys={}; waveDelay=0; waveActive=false; sayLock=0;
+        resize();
+        player.x=W/2; player.y=H-90;
+        $('pass-screen').classList.remove('show');
+        $('fail-screen').classList.remove('show');
+        $('hp-fill').style.width='100%'; $('hp-fill').classList.remove('low');
+        $('wave-info').textContent='第 1 / 5 波';
+        $('score-info').textContent='风筝就绪 · 空格发射';
+        $('kite-btn').classList.remove('cd'); $('kite-btn').classList.remove('active');
+        $('wave-banner').classList.remove('show');
+        $('start-prompt').style.display='';
+        $('tangbao-body').textContent='空格放太空风筝：撞掉连珠炮弹幕、撞退敌机！激光要走位躲！';
+        try { TangbaoVoice.speak('海盗火力封锁！连珠炮弹幕又多又慢，放太空风筝飞上去撞掉；激光炮风筝挡不住，蓄力时左右躲开。风筝撞上敌机就能把它撞退出场，清光本波全部敌机才能进入下一波，共五波！'); } catch(e){}
+
+        if (canvas && !canvas._l2touch) {
+            canvas._l2touch=true;
+            canvas.addEventListener('touchstart', function(e){
+                if (activeView!=='level2') return;
+                e.preventDefault();
+                if (!gameStarted) { startGame(); return; }
+                var t=e.touches[0];
+                if (t.clientX<W/2) keys['ArrowLeft']=true; else keys['ArrowRight']=true;
+                launchKite();
+            },{passive:false});
+            canvas.addEventListener('touchend', function(e){
+                if (activeView!=='level2') return;
+                e.preventDefault();
+                keys['ArrowLeft']=false; keys['ArrowRight']=false;
+            },{passive:false});
+        }
+        rafId = requestAnimationFrame(render);
+    };
+})();
+
+
+
+
+// ===== 独立文件启动:直接进入第2关 =====
+switchTo('level2');
+</script>
+</body>
+</html>
