@@ -1,639 +1,639 @@
-  1→<!DOCTYPE html>
-  2→<html lang="zh">
-  3→<head>
-  4→<meta charset="UTF-8">
-  5→<meta name="viewport" content="width=device-width,initial-scale=1">
-  6→<title>第3关 · 离谱星人盘问 · 离谱星际穿越</title>
-  7→<style>
-  8→:root{
-  9→    --bg:#0a0a14;
- 10→    --panel:rgba(15,15,25,0.85);
- 11→    --border:rgba(255,255,255,0.08);
- 12→    --amber:#fbbf24;
- 13→    --coral:#f87171;
- 14→    --rose:#f472b6;
- 15→    --teal:#2dd4bf;
- 16→    --green:#22c55e;
- 17→    --red:#ef4444;
- 18→    --cream:#fef3c7;
- 19→    --muted:#6b7280;
- 20→}
- 21→
- 22→*{margin:0;padding:0;box-sizing:border-box}
- 23→body{background:var(--bg);overflow:hidden;font-family:"PingFang SC","Microsoft YaHei",sans-serif;color:var(--cream);user-select:none;-webkit-user-select:none}
- 24→canvas{display:block}
- 25→a{color:inherit}
- 26→
- 27→/* View switching */
- 28→.view{position:absolute;inset:0;overflow:hidden}
- 29→
- 30→/* Game canvas common */
- 31→.game-canvas{position:absolute;inset:0;width:100%;height:100%}
- 32→
- 33→/* Animation slot */
- 34→.anim-slot{position:absolute;inset:0;z-index:50;display:none}
- 35→.anim-slot.anim-active{display:block}
- 36→.anim-wrapper{position:relative;width:100%;height:100%;background:#000}
- 37→.anim-video{width:100%;height:100%;object-fit:contain}
- 38→.anim-subtitle{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);padding:6px 16px;border-radius:8px;font-size:14px;color:rgba(255,255,255,0.85)}
- 39→.anim-skip{position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);padding:6px 16px;border-radius:8px;font-size:13px;cursor:pointer;transition:all .2s}
- 40→.anim-skip:hover{background:rgba(255,255,255,0.15);color:#fff}
- 41→
- 42→/* Common panels (converted from ID to class) */
- 43→.tangbao-panel{position:absolute;top:20px;right:20px;width:220px;background:var(--panel);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);z-index:15}
- 44→.tangbao-title{font-size:11px;font-weight:700;color:var(--amber);padding:8px 14px;border-bottom:1px solid var(--border);letter-spacing:1px}
- 45→.tangbao-body{padding:10px 14px;font-size:11px;line-height:1.7;color:var(--cream);min-height:30px}
- 46→
- 47→.hp-bar{position:absolute;top:20px;left:20px;width:200px;z-index:15}
- 48→.hp-label{font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:1px}
- 49→.hp-track{height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden}
- 50→.hp-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--amber));border-radius:4px;transition:width .3s;width:100%}
- 51→.hp-fill.low{background:linear-gradient(90deg,var(--red),var(--coral))}
- 52→
- 53→.progress-bar{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:300px;z-index:15}
- 54→.progress-label{font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:1px;text-align:center}
- 55→.progress-track{height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden}
- 56→.progress-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--amber));border-radius:3px;transition:width .3s;width:0%}
- 57→
- 58→/* Dialog (converted from ID to class) */
- 59→.dialog-overlay{position:absolute;inset:0;z-index:20;display:none}
- 60→.dialog-overlay.show{display:flex;align-items:center;justify-content:center}
- 61→.dialog-box{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px 32px;max-width:600px;width:90%;backdrop-filter:blur(12px);cursor:pointer}
- 62→.dialog-speaker{font-size:12px;font-weight:700;margin-bottom:8px}
- 63→.dialog-text{font-size:15px;line-height:1.8;color:var(--cream)}
- 64→.dialog-hint{text-align:right;font-size:10px;color:var(--muted);margin-top:12px;animation:pulse 1.5s infinite}
- 65→@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}
- 66→
- 67→/* Pass/Fail screens (already class-based) */
- 68→.pass-screen,.fail-screen{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,0.9);opacity:0;pointer-events:none;transition:opacity .5s}
- 69→.pass-screen.show,.fail-screen.show{opacity:1;pointer-events:auto}
- 70→.pass-screen .title{font-size:36px;font-weight:800;background:linear-gradient(135deg,var(--amber),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:6px;margin-bottom:12px}
- 71→.fail-screen .title{font-size:36px;font-weight:800;color:var(--red);letter-spacing:6px;margin-bottom:12px}
- 72→.pass-screen .sub,.fail-screen .sub{font-size:13px;color:var(--muted);margin-bottom:30px;letter-spacing:2px}
- 73→.pass-screen button,.fail-screen button{padding:12px 36px;background:transparent;border:1.5px solid var(--amber);border-radius:10px;color:var(--amber);font-size:14px;cursor:pointer;transition:all .25s;letter-spacing:2px}
- 74→.pass-screen button:hover,.fail-screen button:hover{background:var(--amber);color:#000;transform:scale(1.05)}
- 75→
- 76→/* Screen flash (converted from ID to class) */
- 77→.screen-flash{position:absolute;inset:0;pointer-events:none;z-index:25;opacity:0;transition:opacity .3s}
- 78→
- 79→/* Key hint */
- 80→kbd{display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:4px;font-size:11px;font-family:monospace}
- 81→
- 82→/* ===== 第3关专属样式(离谱星人盘问) ===== */
- 83→/* ================================================================
- 84→   LEVEL 3 INLINE STYLES (IDs prefixed with l3-)
- 85→   ================================================================ */
- 86→#l3-quiz-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:560px;max-width:92vw;z-index:10}
- 87→.l3-quiz-header{text-align:center;margin-bottom:16px}
- 88→.l3-quiz-q-num{font-size:11px;color:var(--muted);letter-spacing:2px}
- 89→.l3-quiz-question{font-size:22px;font-weight:700;color:var(--cream);margin:12px 0 20px;text-align:center;line-height:1.5}
- 90→.l3-quiz-choices{display:flex;flex-direction:column;gap:10px}
- 91→.l3-quiz-choice{padding:14px 20px;border:2px solid var(--border);border-radius:12px;background:rgba(255,255,255,0.04);color:var(--cream);font-size:15px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px}
- 92→.l3-quiz-choice:hover{border-color:var(--amber);background:rgba(251,191,36,0.06);transform:translateX(4px)}
- 93→.l3-quiz-choice .num{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--muted);flex-shrink:0}
- 94→.l3-quiz-choice:hover .num{border-color:var(--amber);color:var(--amber)}
- 95→.l3-quiz-choice.correct{border-color:var(--green);background:rgba(34,197,94,0.1)}
- 96→.l3-quiz-choice.correct .num{border-color:var(--green);color:var(--green)}
- 97→.l3-quiz-choice.wrong{border-color:var(--red);background:rgba(239,68,68,0.1)}
- 98→.l3-quiz-choice.wrong .num{border-color:var(--red);color:var(--red)}
- 99→.l3-quiz-choice.disabled{pointer-events:none;opacity:0.5}
-100→#l3-absurd-bar{position:absolute;top:20px;left:50%;transform:translateX(-50%);width:280px;z-index:15;text-align:center}
-101→#l3-absurd-label{font-size:11px;color:var(--rose);margin-bottom:4px;letter-spacing:2px}
-102→#l3-absurd-track{height:10px;background:rgba(255,255,255,0.08);border-radius:5px;overflow:hidden}
-103→#l3-absurd-fill{height:100%;background:linear-gradient(90deg,var(--rose),var(--coral),var(--amber));border-radius:5px;transition:width .5s;width:0%}
-104→#l3-timer-bar{position:absolute;top:60px;left:50%;transform:translateX(-50%);width:280px;z-index:15;text-align:center}
-105→#l3-timer-track{height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden}
-106→#l3-timer-fill{height:100%;background:var(--teal);border-radius:2px;transition:width .1s;width:100%}
-107→#l3-timer-fill.warn{background:var(--red)}
-108→#l3-explain-box{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:520px;max-width:92vw;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px 32px;z-index:20;backdrop-filter:blur(12px);cursor:pointer}
-109→#l3-explain-box.show{display:block}
-110→.l3-explain-result{font-size:14px;font-weight:700;margin-bottom:12px;text-align:center}
-111→.l3-explain-text{font-size:14px;line-height:1.8;color:var(--cream);text-align:center}
-112→.l3-explain-next{margin-top:20px;text-align:center;font-size:11px;color:var(--muted)}
-113→
-114→</style>
-115→</head>
-116→<body>
-117→<div style="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:999;display:flex;gap:8px;font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:12px;letter-spacing:1px;white-space:nowrap"><a href="level1.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">1·三道密码锁</a><a href="level2.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">2·星际海盗战</a><a href="level3.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);background:rgba(251,191,36,0.22);border-color:#fbbf24;color:#fbbf24;font-weight:700;">3·离谱星人盘问</a><a href="level4.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">4·穿越小行星带</a></div>
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>第3关 · 离谱星人盘问 · 离谱星际穿越</title>
+<style>
+:root{
+    --bg:#0a0a14;
+    --panel:rgba(15,15,25,0.85);
+    --border:rgba(255,255,255,0.08);
+    --amber:#fbbf24;
+    --coral:#f87171;
+    --rose:#f472b6;
+    --teal:#2dd4bf;
+    --green:#22c55e;
+    --red:#ef4444;
+    --cream:#fef3c7;
+    --muted:#6b7280;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);overflow:hidden;font-family:"PingFang SC","Microsoft YaHei",sans-serif;color:var(--cream);user-select:none;-webkit-user-select:none}
+canvas{display:block}
+a{color:inherit}
+
+/* View switching */
+.view{position:absolute;inset:0;overflow:hidden}
+
+/* Game canvas common */
+.game-canvas{position:absolute;inset:0;width:100%;height:100%}
+
+/* Animation slot */
+.anim-slot{position:absolute;inset:0;z-index:50;display:none}
+.anim-slot.anim-active{display:block}
+.anim-wrapper{position:relative;width:100%;height:100%;background:#000}
+.anim-video{width:100%;height:100%;object-fit:contain}
+.anim-subtitle{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);padding:6px 16px;border-radius:8px;font-size:14px;color:rgba(255,255,255,0.85)}
+.anim-skip{position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.6);padding:6px 16px;border-radius:8px;font-size:13px;cursor:pointer;transition:all .2s}
+.anim-skip:hover{background:rgba(255,255,255,0.15);color:#fff}
+
+/* Common panels (converted from ID to class) */
+.tangbao-panel{position:absolute;top:20px;right:20px;width:220px;background:var(--panel);border:1px solid var(--border);border-radius:12px;backdrop-filter:blur(12px);z-index:15}
+.tangbao-title{font-size:11px;font-weight:700;color:var(--amber);padding:8px 14px;border-bottom:1px solid var(--border);letter-spacing:1px}
+.tangbao-body{padding:10px 14px;font-size:11px;line-height:1.7;color:var(--cream);min-height:30px}
+
+.hp-bar{position:absolute;top:20px;left:20px;width:200px;z-index:15}
+.hp-label{font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:1px}
+.hp-track{height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden}
+.hp-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--amber));border-radius:4px;transition:width .3s;width:100%}
+.hp-fill.low{background:linear-gradient(90deg,var(--red),var(--coral))}
+
+.progress-bar{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:300px;z-index:15}
+.progress-label{font-size:10px;color:var(--muted);margin-bottom:4px;letter-spacing:1px;text-align:center}
+.progress-track{height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--amber));border-radius:3px;transition:width .3s;width:0%}
+
+/* Dialog (converted from ID to class) */
+.dialog-overlay{position:absolute;inset:0;z-index:20;display:none}
+.dialog-overlay.show{display:flex;align-items:center;justify-content:center}
+.dialog-box{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px 32px;max-width:600px;width:90%;backdrop-filter:blur(12px);cursor:pointer}
+.dialog-speaker{font-size:12px;font-weight:700;margin-bottom:8px}
+.dialog-text{font-size:15px;line-height:1.8;color:var(--cream)}
+.dialog-hint{text-align:right;font-size:10px;color:var(--muted);margin-top:12px;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}
+
+/* Pass/Fail screens (already class-based) */
+.pass-screen,.fail-screen{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;flex-direction:column;background:rgba(0,0,0,0.9);opacity:0;pointer-events:none;transition:opacity .5s}
+.pass-screen.show,.fail-screen.show{opacity:1;pointer-events:auto}
+.pass-screen .title{font-size:36px;font-weight:800;background:linear-gradient(135deg,var(--amber),var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:6px;margin-bottom:12px}
+.fail-screen .title{font-size:36px;font-weight:800;color:var(--red);letter-spacing:6px;margin-bottom:12px}
+.pass-screen .sub,.fail-screen .sub{font-size:13px;color:var(--muted);margin-bottom:30px;letter-spacing:2px}
+.pass-screen button,.fail-screen button{padding:12px 36px;background:transparent;border:1.5px solid var(--amber);border-radius:10px;color:var(--amber);font-size:14px;cursor:pointer;transition:all .25s;letter-spacing:2px}
+.pass-screen button:hover,.fail-screen button:hover{background:var(--amber);color:#000;transform:scale(1.05)}
+
+/* Screen flash (converted from ID to class) */
+.screen-flash{position:absolute;inset:0;pointer-events:none;z-index:25;opacity:0;transition:opacity .3s}
+
+/* Key hint */
+kbd{display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:4px;font-size:11px;font-family:monospace}
+
+/* ===== 第3关专属样式(离谱星人盘问) ===== */
+/* ================================================================
+   LEVEL 3 INLINE STYLES (IDs prefixed with l3-)
+   ================================================================ */
+#l3-quiz-panel{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:560px;max-width:92vw;z-index:10}
+.l3-quiz-header{text-align:center;margin-bottom:16px}
+.l3-quiz-q-num{font-size:11px;color:var(--muted);letter-spacing:2px}
+.l3-quiz-question{font-size:22px;font-weight:700;color:var(--cream);margin:12px 0 20px;text-align:center;line-height:1.5}
+.l3-quiz-choices{display:flex;flex-direction:column;gap:10px}
+.l3-quiz-choice{padding:14px 20px;border:2px solid var(--border);border-radius:12px;background:rgba(255,255,255,0.04);color:var(--cream);font-size:15px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px}
+.l3-quiz-choice:hover{border-color:var(--amber);background:rgba(251,191,36,0.06);transform:translateX(4px)}
+.l3-quiz-choice .num{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--muted);flex-shrink:0}
+.l3-quiz-choice:hover .num{border-color:var(--amber);color:var(--amber)}
+.l3-quiz-choice.correct{border-color:var(--green);background:rgba(34,197,94,0.1)}
+.l3-quiz-choice.correct .num{border-color:var(--green);color:var(--green)}
+.l3-quiz-choice.wrong{border-color:var(--red);background:rgba(239,68,68,0.1)}
+.l3-quiz-choice.wrong .num{border-color:var(--red);color:var(--red)}
+.l3-quiz-choice.disabled{pointer-events:none;opacity:0.5}
+#l3-absurd-bar{position:absolute;top:20px;left:50%;transform:translateX(-50%);width:280px;z-index:15;text-align:center}
+#l3-absurd-label{font-size:11px;color:var(--rose);margin-bottom:4px;letter-spacing:2px}
+#l3-absurd-track{height:10px;background:rgba(255,255,255,0.08);border-radius:5px;overflow:hidden}
+#l3-absurd-fill{height:100%;background:linear-gradient(90deg,var(--rose),var(--coral),var(--amber));border-radius:5px;transition:width .5s;width:0%}
+#l3-timer-bar{position:absolute;top:60px;left:50%;transform:translateX(-50%);width:280px;z-index:15;text-align:center}
+#l3-timer-track{height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden}
+#l3-timer-fill{height:100%;background:var(--teal);border-radius:2px;transition:width .1s;width:100%}
+#l3-timer-fill.warn{background:var(--red)}
+#l3-explain-box{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:520px;max-width:92vw;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px 32px;z-index:20;backdrop-filter:blur(12px);cursor:pointer}
+#l3-explain-box.show{display:block}
+.l3-explain-result{font-size:14px;font-weight:700;margin-bottom:12px;text-align:center}
+.l3-explain-text{font-size:14px;line-height:1.8;color:var(--cream);text-align:center}
+.l3-explain-next{margin-top:20px;text-align:center;font-size:11px;color:var(--muted)}
+
+</style>
+</head>
+<body>
+<div style="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:999;display:flex;gap:8px;font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:12px;letter-spacing:1px;white-space:nowrap"><a href="level1.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">1·三道密码锁</a><a href="level2.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">2·星际海盗战</a><a href="level3.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);background:rgba(251,191,36,0.22);border-color:#fbbf24;color:#fbbf24;font-weight:700;">3·离谱星人盘问</a><a href="level4.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">4·穿越小行星带</a></div>
 <div id="skip-btn" onclick="location.href='level4.html'" style="position:fixed;top:12px;right:12px;z-index:9999;padding:6px 14px;border:1.5px solid rgba(251,191,36,0.6);border-radius:18px;background:rgba(15,15,25,0.75);backdrop-filter:blur(8px);color:#fbbf24;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:2px;user-select:none;-webkit-tap-highlight-color:transparent;box-shadow:0 0 12px rgba(251,191,36,0.2);">跳过本关 ⏭</div>
-118→<div id="view-level3" class="view" style="display:none">
-119→    <canvas id="canvas-l3" class="game-canvas"></canvas>
-120→    <div id="l3-screen-flash" class="screen-flash"></div>
-121→
-122→    <div id="l3-anim-pre" class="anim-slot"></div>
-123→    <div id="l3-anim-post" class="anim-slot"></div>
-124→
-125→    <div id="l3-absurd-bar">
-126→        <div id="l3-absurd-label">离谱指数</div>
-127→        <div id="l3-absurd-track"><div id="l3-absurd-fill"></div></div>
-128→    </div>
-129→    <div id="l3-timer-bar">
-130→        <div id="l3-timer-track"><div id="l3-timer-fill"></div></div>
-131→    </div>
-132→
-133→    <div id="l3-tangbao-panel" class="tangbao-panel">
-134→        <div id="l3-tangbao-title" class="tangbao-title">糖包助手</div>
-135→        <div id="l3-tangbao-body" class="tangbao-body">选择最离谱的答案！离谱指数满格就能过关</div>
-136→    </div>
-137→
-138→    <div id="l3-quiz-panel">
-139→        <div class="l3-quiz-header">
-140→            <div class="l3-quiz-q-num" id="l3-q-num">第 1 / 5 题</div>
-141→        </div>
-142→        <div class="l3-quiz-question" id="l3-q-text"></div>
-143→        <div class="l3-quiz-choices" id="l3-q-choices"></div>
-144→    </div>
-145→
-146→    <div id="l3-explain-box">
-147→        <div class="l3-explain-result" id="l3-explain-result"></div>
-148→        <div class="l3-explain-text" id="l3-explain-text"></div>
-149→        <div class="l3-explain-next">点击继续</div>
-150→    </div>
-151→
-152→    <div class="pass-screen" id="l3-pass-screen">
-153→        <div class="title">盘问通过</div>
-154→        <div class="sub">离谱星人满意地放行了</div>
-155→        <button onclick="location.href='level4.html'">继续 →</button>
-156→    </div>
-157→</div>
-158→
-159→<script>
-160→// 静默预览环境注入脚本残留错误(来源<anonymous>的"is not defined"), 游戏真实错误照常抛出
-161→(function(){
-162→  var _oe = window.onerror;
-163→  window.onerror = function(msg, src, line, col, err){
-164→    if (!src && typeof msg === 'string' && /is not defined$/.test(msg) && line <= 1) return true;
-165→    if (_oe) return _oe.apply(this, arguments);
-166→  };
-167→})();
-168→// ================================================================
-169→// COMMON.JS  (AnimSlot / GameUI / SFX)
-170→// ================================================================
-171→// ================================================================
-172→// COMMON.JS  (AnimSlot, GameUI, SFX)
-173→// ================================================================
-174→
-175→/**
-176→ * 通用动画插槽系统
-177→ */
-178→const AnimSlot = {
-179→    current: null,
-180→
-181→    play(containerId, videoSrc, opts = {}) {
-182→        return new Promise((resolve) => {
-183→            const container = document.getElementById(containerId);
-184→            if (!container || !videoSrc) {
-185→                resolve();
-186→                return;
-187→            }
-188→
-189→            container.innerHTML = '';
-190→            container.classList.add('anim-active');
-191→
-192→            const wrapper = document.createElement('div');
-193→            wrapper.className = 'anim-wrapper';
-194→
-195→            const video = document.createElement('video');
-196→            video.src = videoSrc;
-197→            video.autoplay = true;
-198→            video.playsInline = true;
-199→            video.className = 'anim-video';
-200→
-201→            if (opts.subtitle) {
-202→                const sub = document.createElement('div');
-203→                sub.className = 'anim-subtitle';
-204→                sub.textContent = opts.subtitle;
-205→                wrapper.appendChild(sub);
-206→            }
-207→
-208→            if (opts.skip !== false) {
-209→                const skipBtn = document.createElement('button');
-210→                skipBtn.className = 'anim-skip';
-211→                skipBtn.textContent = '跳过 →';
-212→                skipBtn.onclick = () => {
-213→                    container.classList.remove('anim-active');
-214→                    container.innerHTML = '';
-215→                    AnimSlot.current = null;
-216→                    resolve();
-217→                };
-218→                wrapper.appendChild(skipBtn);
-219→            }
-220→
-221→            wrapper.appendChild(video);
-222→            container.appendChild(wrapper);
-223→            AnimSlot.current = { container, resolve };
-224→
-225→            video.onended = () => {
-226→                container.classList.remove('anim-active');
-227→                container.innerHTML = '';
-228→                AnimSlot.current = null;
-229→                resolve();
-230→            };
-231→
-232→            video.onerror = () => {
-233→                container.classList.remove('anim-active');
-234→                container.innerHTML = '';
-235→                AnimSlot.current = null;
-236→                resolve();
-237→            };
-238→        });
-239→    },
-240→
-241→    skip() {
-242→        if (AnimSlot.current) {
-243→            const { container, resolve } = AnimSlot.current;
-244→            container.classList.remove('anim-active');
-245→            container.innerHTML = '';
-246→            AnimSlot.current = null;
-247→            resolve();
-248→        }
-249→    }
-250→};
-251→
-252→/**
-253→ * 通用UI组件
-254→ */
-255→const GameUI = {
-256→    createTangbao(title, msg) {
-257→        return `
-258→            <div id="tangbao-panel">
-259→                <div id="tangbao-title">${title || '糖包助手'}</div>
-260→                <div id="tangbao-body">${msg || ''}</div>
-261→            </div>
-262→        `;
-263→    },
-264→
-265→    createHPBar(label) {
-266→        return `
-267→            <div id="hp-bar">
-268→                <div id="hp-label">${label || 'HP'}</div>
-269→                <div id="hp-track"><div id="hp-fill"></div></div>
-270→            </div>
-271→        `;
-272→    },
-273→
-274→    createProgressBar(label) {
-275→        return `
-276→            <div id="progress-bar">
-277→                <div id="progress-label">${label || '进度'}</div>
-278→                <div id="progress-track"><div id="progress-fill"></div></div>
-279→            </div>
-280→        `;
-281→    }
-282→};
-283→
-284→/**
-285→ * 通用音效系统（Web Audio API）
-286→ */
-287→const SFX = {
-288→    ctx: null,
-289→
-290→    init() {
-291→        if (!this.ctx) {
-292→            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-293→        }
-294→        if (this.ctx.state === 'suspended') this.ctx.resume();
-295→    },
-296→
-297→    play(freq, dur, type = 'square', vol = 0.15) {
-298→        this.init();
-299→        const osc = this.ctx.createOscillator();
-300→        const gain = this.ctx.createGain();
-301→        osc.type = type;
-302→        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
-303→        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-304→        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
-305→        osc.connect(gain);
-306→        gain.connect(this.ctx.destination);
-307→        osc.start();
-308→        osc.stop(this.ctx.currentTime + dur);
-309→    },
-310→
-311→    sweep(f1, f2, dur, type = 'sawtooth', vol = 0.12) {
-312→        this.init();
-313→        const osc = this.ctx.createOscillator();
-314→        const gain = this.ctx.createGain();
-315→        osc.type = type;
-316→        osc.frequency.setValueAtTime(f1, this.ctx.currentTime);
-317→        osc.frequency.exponentialRampToValueAtTime(f2, this.ctx.currentTime + dur);
-318→        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-319→        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
-320→        osc.connect(gain);
-321→        gain.connect(this.ctx.destination);
-322→        osc.start();
-323→        osc.stop(this.ctx.currentTime + dur);
-324→    },
-325→
-326→    noise(dur, vol = 0.08) {
-327→        this.init();
-328→        const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate * dur, this.ctx.sampleRate);
-329→        const data = buffer.getChannelData(0);
-330→        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
-331→        const src = this.ctx.createBufferSource();
-332→        src.buffer = buffer;
-333→        const gain = this.ctx.createGain();
-334→        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
-335→        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
-336→        src.connect(gain);
-337→        gain.connect(this.ctx.destination);
-338→        src.start();
-339→    },
-340→
-341→    shoot() { this.sweep(800, 200, 0.08, 'square', 0.1); },
-342→    hit() { this.sweep(400, 80, 0.15, 'sawtooth', 0.12); },
-343→    explode() { this.noise(0.25, 0.1); this.sweep(200, 50, 0.3, 'sawtooth', 0.08); },
-344→    pickup() { this.play(660, 0.1); setTimeout(() => this.play(880, 0.15), 80); },
-345→    click() { this.play(440, 0.05, 'sine', 0.08); },
-346→    success() { this.play(523, 0.12); setTimeout(() => this.play(659, 0.12), 100); setTimeout(() => this.play(784, 0.2), 200); },
-347→    fail() { this.sweep(220, 110, 0.3, 'square', 0.1); },
-348→    dot() { this.play(600, 0.08, 'sine', 0.12); },
-349→    dash() { this.play(400, 0.25, 'sine', 0.12); },
-350→};
-351→
-352→/**
-353→ * \u7cd6\u5305\u8bed\u97f3\u63d0\u793a\u7cfb\u7edf\uff08Web Speech API\uff09
-354→ */
-355→var TangbaoVoice = {
-356→    speak: function(text) {
-357→        try {
-358→            if (!window.speechSynthesis) return;
-359→            window.speechSynthesis.cancel();
-360→            var u = new SpeechSynthesisUtterance(text);
-361→            u.lang = 'zh-CN';
-362→            u.rate = 1.3;
-363→            u.pitch = 1.3;
-364→            u.volume = 0.8;
-365→            window.speechSynthesis.speak(u);
-366→        } catch(e) {}
-367→    },
-368→    stop: function() {
-369→        try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e) {}
-370→    }
-371→};
-372→
-373→// ================================================================
-374→// VIEW SWITCHING SYSTEM
-375→// ================================================================
-376→// ================================================================
-377→// VIEW SWITCHING SYSTEM
-378→// ================================================================
-379→let activeView = null;
-380→const levelInits = {};
-381→
-382→function switchTo(viewName) {
-383→    // Hide all views
-384→    document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
-385→    // Show target view
-386→    const view = document.getElementById('view-' + viewName);
-387→    if (view) view.style.display = 'block';
-388→    activeView = viewName;
-389→    // Call init function for that view
-390→    if (levelInits[viewName]) levelInits[viewName]();
-391→}
-392→
-393→// ================================================================
-394→// LEVEL 3 - 离谱星人盘问
-395→// ================================================================
-396→// ================================================================
-397→// LEVEL 3 - Quiz Game
-398→// ================================================================
-399→(function() {
-400→    const $ = (id) => document.getElementById('l3-' + id);
-401→    const viewEl = () => document.getElementById('view-level3');
-402→    let canvas, ctx;
-403→    let W, H, time = 0;
-404→
-405→    function resize() {
-406→        if (!canvas) return;
-407→        W = canvas.width = innerWidth;
-408→        H = canvas.height = innerHeight;
-409→    }
-410→
-411→    const questions = [
-412→        {
-413→            q: '1+1 等于几？',
-414→            choices: ['2', '11', '王田丰', '你猜'],
-415→            correct: 2,
-416→            explain: '长老："王田丰？！这都什么和什么啊！离谱到无法反驳！"',
-417→            absurd: 30
-418→        },
-419→        {
-420→            q: '天空为什么是蓝色的？',
-421→            choices: ['瑞利散射', '上帝画的', '鱼在下面吹蓝色泡泡', '我怎么知道'],
-422→            correct: 2,
-423→            explain: '长老："鱼吹泡泡？！太离谱了……可是我无法证伪……"',
-424→            absurd: 25
-425→        },
-426→        {
-427→            q: '怎样才能最快从北京到上海？',
-428→            choices: ['坐飞机', '坐高铁', '闭上眼睛想一下', '打开地图看一眼'],
-429→            correct: 3,
-430→            explain: '长老："打开地图就到了？！我无言以对！"',
-431→            absurd: 25
-432→        },
-433→        {
-434→            q: '人为什么要睡觉？',
-435→            choices: ['恢复体力', '梦里有答案', '床在召唤', '不睡会被床嘲笑'],
-436→            correct: 3,
-437→            explain: '长老："被床嘲笑？！这……太离谱了！"',
-438→            absurd: 20
-439→        },
-440→        {
-441→            q: '为什么猫喜欢抓老鼠？',
-442→            choices: ['本能', '老鼠欠它钱', '猫和老鼠是CP', '因为猫不会抓狗'],
-443→            correct: 1,
-444→            explain: '长老："老鼠欠猫钱？！什么逻辑！但确实离谱！"',
-445→            absurd: 20
-446→        }
-447→    ];
-448→
-449→    let currentQ = 0;
-450→    let absurdLevel = 0;
-451→    let answered = false;
-452→    let timerLeft = 100;
-453→    let timerRAF = null;
-454→
-455→    function renderQuestion() {
-456→        const q = questions[currentQ];
-457→        $('q-num').textContent = `第 ${currentQ + 1} / ${questions.length} 题`;
-458→        $('q-text').textContent = q.q;
-459→
-460→        const choicesEl = $('q-choices');
-461→        choicesEl.innerHTML = '';
-462→        q.choices.forEach((c, i) => {
-463→            const div = document.createElement('div');
-464→            div.className = 'l3-quiz-choice';
-465→            div.innerHTML = `<div class="num">${'ABCD'[i]}</div><div>${c}</div>`;
-466→            div.onclick = () => answerQuestion(i);
-467→            choicesEl.appendChild(div);
-468→        });
-469→
-470→        answered = false;
-471→        timerLeft = 100;
-472→        startTimer();
-473→    }
-474→
-475→    function startTimer() {
-476→        if (timerRAF) cancelAnimationFrame(timerRAF);
-477→        function tick() {
-478→            if (answered || activeView !== 'level3') return;
-479→            timerLeft -= 0.12;
-480→            if (timerLeft <= 0) {
-481→                timerLeft = 0;
-482→                answerQuestion(-1);
-483→                return;
-484→            }
-485→            const fill = $('timer-fill');
-486→            fill.style.width = timerLeft + '%';
-487→            if (timerLeft < 30) fill.classList.add('warn');
-488→            else fill.classList.remove('warn');
-489→            timerRAF = requestAnimationFrame(tick);
-490→        }
-491→        timerRAF = requestAnimationFrame(tick);
-492→    }
-493→
-494→    function answerQuestion(idx) {
-495→        if (answered) return;
-496→        answered = true;
-497→        if (timerRAF) cancelAnimationFrame(timerRAF);
-498→
-499→        const q = questions[currentQ];
-500→        const choices = viewEl().querySelectorAll('.l3-quiz-choice');
-501→        choices.forEach(c => c.classList.add('disabled'));
-502→
-503→        if (idx === q.correct) {
-504→            choices[idx].classList.add('correct');
-505→            absurdLevel = Math.min(100, absurdLevel + q.absurd);
-506→            $('explain-result').textContent = '✓ 离谱成功！';
-507→            $('explain-result').style.color = 'var(--green)';
-508→            SFX.success();
-509→        } else {
-510→            if (idx >= 0) choices[idx].classList.add('wrong');
-511→            choices[q.correct].classList.add('correct');
-512→            absurdLevel = Math.min(100, absurdLevel + Math.floor(q.absurd * 0.3));
-513→            $('explain-result').textContent = idx === -1 ? '⏰ 超时了！' : '✗ 不够离谱';
-514→            $('explain-result').style.color = 'var(--red)';
-515→            SFX.fail();
-516→        }
-517→
-518→        $('explain-text').textContent = q.explain;
-519→        $('absurd-fill').style.width = absurdLevel + '%';
-520→        $('tangbao-body').textContent = `离谱指数 ${absurdLevel}/100`;
-521→
-522→        setTimeout(() => {
-523→            if (activeView !== 'level3') return;
-524→            $('explain-box').classList.add('show');
-525→        }, 600);
-526→    }
-527→
-528→    // Stars for background
-529→    const stars = [];
-530→    for (let i = 0; i < 100; i++) {
-531→        stars.push({ x: Math.random() * 1920, y: Math.random() * 1080, size: Math.random() * 2, twinkle: Math.random() * Math.PI * 2, vx: (Math.random() - 0.5) * 0.2 });
-532→    }
-533→
-534→    function drawBackground() {
-535→        // Pure black space
-536→        ctx.fillStyle = '#000000';
-537→        ctx.fillRect(0, 0, W, H);
-538→
-539→        // Subtle deep purple glow
-540→        const grad = ctx.createRadialGradient(W * 0.5, H * 0.5, 0, W * 0.5, H * 0.5, Math.max(W, H) * 0.5);
-541→        grad.addColorStop(0, 'rgba(130,80,220,0.05)');
-542→        grad.addColorStop(1, 'rgba(0,0,0,0)');
-543→        ctx.fillStyle = grad;
-544→        ctx.fillRect(0, 0, W, H);
-545→
-546→        // Distant stars - minimal, serious
-547→        stars.forEach(s => {
-548→            s.x += s.vx;
-549→            if (s.x < 0) s.x = W;
-550→            if (s.x > W) s.x = 0;
-551→            const alpha = 0.15 + Math.sin(time * 0.015 + s.twinkle) * 0.15;
-552→            ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-553→            ctx.beginPath();
-554→            ctx.arc(s.x % W, s.y % H, s.size * 0.8, 0, Math.PI * 2);
-555→            ctx.fill();
-556→        });
-557→
-558→        // Faint golden nebula band
-559→        ctx.save();
-560→        ctx.globalAlpha = 0.04;
-561→        var nebGrad = ctx.createLinearGradient(0, H * 0.3, W, H * 0.7);
-562→        nebGrad.addColorStop(0, 'rgba(255,170,0,0)');
-563→        nebGrad.addColorStop(0.5, 'rgba(255,170,0,0.8)');
-564→        nebGrad.addColorStop(1, 'rgba(255,170,0,0)');
-565→        ctx.fillStyle = nebGrad;
-566→        ctx.fillRect(0, H * 0.25, W, H * 0.5);
-567→        ctx.restore();
-568→    }
-569→
-570→    function render() {
-571→        if (activeView !== 'level3') return;
-572→        time++;
-573→        drawBackground();
-574→        requestAnimationFrame(render);
-575→    }
-576→
-577→    // Explain box click handler (set once; element exists in DOM at script execution time)
-578→    $('explain-box').onclick = function() {
-579→        $('explain-box').classList.remove('show');
-580→
-581→        if (currentQ < questions.length - 1) {
-582→            currentQ++;
-583→            setTimeout(renderQuestion, 300);
-584→        } else {
-585→            if (absurdLevel >= 50) {
-586→                SFX.success();
-587→                setTimeout(() => {
-588→                    if (activeView !== 'level3') return;
-589→                    $('pass-screen').classList.add('show');
-590→                }, 300);
-591→            } else {
-592→                $('tangbao-body').textContent = '离谱指数不够！重新答题';
-593→                currentQ = 0;
-594→                absurdLevel = 0;
-595→                $('absurd-fill').style.width = '0%';
-596→                setTimeout(renderQuestion, 500);
-597→            }
-598→        }
-599→    };
-600→
-601→    window.addEventListener('resize', function() {
-602→        if (activeView !== 'level3') return;
-603→        resize();
-604→    });
-605→
-606→    levelInits['level3'] = function init() {
-607→        canvas = document.getElementById('canvas-l3');
-608→        ctx = canvas.getContext('2d');
-609→        time = 0;
-610→        currentQ = 0;
-611→        absurdLevel = 0;
-612→        answered = false;
-613→        timerLeft = 100;
-614→        if (timerRAF) cancelAnimationFrame(timerRAF);
-615→
-616→        // Reset UI
-617→        $('pass-screen').classList.remove('show');
-618→        $('explain-box').classList.remove('show');
-619→        $('absurd-fill').style.width = '0%';
-620→        $('timer-fill').style.width = '100%';
-621→        $('timer-fill').classList.remove('warn');
-622→        $('tangbao-body').textContent = '\u9009\u62e9\u6700\u79bb\u8c31\u7684\u7b54\u6848\uff01\u79bb\u8c31\u6307\u6570\u6ee1\u683c\u5c31\u80fd\u8fc7\u5173';
-623→        TangbaoVoice.speak('\u4e3b\u4eba\uff01\u79bb\u8c31\u661f\u4eba\u6765\u4e86\uff01\u9009\u6700\u79bb\u8c31\u7684\u7b54\u6848\uff0c\u79bb\u8c31\u6307\u6570\u6ee1\u683c\u5c31\u80fd\u901a\u5173\uff01');
-624→
-625→        resize();
-626→        render();
-627→        renderQuestion();
-628→    };
-629→})();
-630→
-631→
-632→
-633→
-634→// ===== 独立文件启动:直接进入第3关 =====
-635→switchTo('level3');
-636→</script>
-637→</body>
-638→</html>
+<div id="view-level3" class="view" style="display:none">
+    <canvas id="canvas-l3" class="game-canvas"></canvas>
+    <div id="l3-screen-flash" class="screen-flash"></div>
+
+    <div id="l3-anim-pre" class="anim-slot"></div>
+    <div id="l3-anim-post" class="anim-slot"></div>
+
+    <div id="l3-absurd-bar">
+        <div id="l3-absurd-label">离谱指数</div>
+        <div id="l3-absurd-track"><div id="l3-absurd-fill"></div></div>
+    </div>
+    <div id="l3-timer-bar">
+        <div id="l3-timer-track"><div id="l3-timer-fill"></div></div>
+    </div>
+
+    <div id="l3-tangbao-panel" class="tangbao-panel">
+        <div id="l3-tangbao-title" class="tangbao-title">糖包助手</div>
+        <div id="l3-tangbao-body" class="tangbao-body">选择最离谱的答案！离谱指数满格就能过关</div>
+    </div>
+
+    <div id="l3-quiz-panel">
+        <div class="l3-quiz-header">
+            <div class="l3-quiz-q-num" id="l3-q-num">第 1 / 5 题</div>
+        </div>
+        <div class="l3-quiz-question" id="l3-q-text"></div>
+        <div class="l3-quiz-choices" id="l3-q-choices"></div>
+    </div>
+
+    <div id="l3-explain-box">
+        <div class="l3-explain-result" id="l3-explain-result"></div>
+        <div class="l3-explain-text" id="l3-explain-text"></div>
+        <div class="l3-explain-next">点击继续</div>
+    </div>
+
+    <div class="pass-screen" id="l3-pass-screen">
+        <div class="title">盘问通过</div>
+        <div class="sub">离谱星人满意地放行了</div>
+        <button onclick="location.href='level4.html'">继续 →</button>
+    </div>
+</div>
+
+<script>
+// 静默预览环境注入脚本残留错误(来源<anonymous>的"is not defined"), 游戏真实错误照常抛出
+(function(){
+  var _oe = window.onerror;
+  window.onerror = function(msg, src, line, col, err){
+    if (!src && typeof msg === 'string' && /is not defined$/.test(msg) && line <= 1) return true;
+    if (_oe) return _oe.apply(this, arguments);
+  };
+})();
+// ================================================================
+// COMMON.JS  (AnimSlot / GameUI / SFX)
+// ================================================================
+// ================================================================
+// COMMON.JS  (AnimSlot, GameUI, SFX)
+// ================================================================
+
+/**
+ * 通用动画插槽系统
+ */
+const AnimSlot = {
+    current: null,
+
+    play(containerId, videoSrc, opts = {}) {
+        return new Promise((resolve) => {
+            const container = document.getElementById(containerId);
+            if (!container || !videoSrc) {
+                resolve();
+                return;
+            }
+
+            container.innerHTML = '';
+            container.classList.add('anim-active');
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'anim-wrapper';
+
+            const video = document.createElement('video');
+            video.src = videoSrc;
+            video.autoplay = true;
+            video.playsInline = true;
+            video.className = 'anim-video';
+
+            if (opts.subtitle) {
+                const sub = document.createElement('div');
+                sub.className = 'anim-subtitle';
+                sub.textContent = opts.subtitle;
+                wrapper.appendChild(sub);
+            }
+
+            if (opts.skip !== false) {
+                const skipBtn = document.createElement('button');
+                skipBtn.className = 'anim-skip';
+                skipBtn.textContent = '跳过 →';
+                skipBtn.onclick = () => {
+                    container.classList.remove('anim-active');
+                    container.innerHTML = '';
+                    AnimSlot.current = null;
+                    resolve();
+                };
+                wrapper.appendChild(skipBtn);
+            }
+
+            wrapper.appendChild(video);
+            container.appendChild(wrapper);
+            AnimSlot.current = { container, resolve };
+
+            video.onended = () => {
+                container.classList.remove('anim-active');
+                container.innerHTML = '';
+                AnimSlot.current = null;
+                resolve();
+            };
+
+            video.onerror = () => {
+                container.classList.remove('anim-active');
+                container.innerHTML = '';
+                AnimSlot.current = null;
+                resolve();
+            };
+        });
+    },
+
+    skip() {
+        if (AnimSlot.current) {
+            const { container, resolve } = AnimSlot.current;
+            container.classList.remove('anim-active');
+            container.innerHTML = '';
+            AnimSlot.current = null;
+            resolve();
+        }
+    }
+};
+
+/**
+ * 通用UI组件
+ */
+const GameUI = {
+    createTangbao(title, msg) {
+        return `
+            <div id="tangbao-panel">
+                <div id="tangbao-title">${title || '糖包助手'}</div>
+                <div id="tangbao-body">${msg || ''}</div>
+            </div>
+        `;
+    },
+
+    createHPBar(label) {
+        return `
+            <div id="hp-bar">
+                <div id="hp-label">${label || 'HP'}</div>
+                <div id="hp-track"><div id="hp-fill"></div></div>
+            </div>
+        `;
+    },
+
+    createProgressBar(label) {
+        return `
+            <div id="progress-bar">
+                <div id="progress-label">${label || '进度'}</div>
+                <div id="progress-track"><div id="progress-fill"></div></div>
+            </div>
+        `;
+    }
+};
+
+/**
+ * 通用音效系统（Web Audio API）
+ */
+const SFX = {
+    ctx: null,
+
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+    },
+
+    play(freq, dur, type = 'square', vol = 0.15) {
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + dur);
+    },
+
+    sweep(f1, f2, dur, type = 'sawtooth', vol = 0.12) {
+        this.init();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(f1, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(f2, this.ctx.currentTime + dur);
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + dur);
+    },
+
+    noise(dur, vol = 0.08) {
+        this.init();
+        const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate * dur, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+        const src = this.ctx.createBufferSource();
+        src.buffer = buffer;
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+        src.connect(gain);
+        gain.connect(this.ctx.destination);
+        src.start();
+    },
+
+    shoot() { this.sweep(800, 200, 0.08, 'square', 0.1); },
+    hit() { this.sweep(400, 80, 0.15, 'sawtooth', 0.12); },
+    explode() { this.noise(0.25, 0.1); this.sweep(200, 50, 0.3, 'sawtooth', 0.08); },
+    pickup() { this.play(660, 0.1); setTimeout(() => this.play(880, 0.15), 80); },
+    click() { this.play(440, 0.05, 'sine', 0.08); },
+    success() { this.play(523, 0.12); setTimeout(() => this.play(659, 0.12), 100); setTimeout(() => this.play(784, 0.2), 200); },
+    fail() { this.sweep(220, 110, 0.3, 'square', 0.1); },
+    dot() { this.play(600, 0.08, 'sine', 0.12); },
+    dash() { this.play(400, 0.25, 'sine', 0.12); },
+};
+
+/**
+ * \u7cd6\u5305\u8bed\u97f3\u63d0\u793a\u7cfb\u7edf\uff08Web Speech API\uff09
+ */
+var TangbaoVoice = {
+    speak: function(text) {
+        try {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            var u = new SpeechSynthesisUtterance(text);
+            u.lang = 'zh-CN';
+            u.rate = 1.3;
+            u.pitch = 1.3;
+            u.volume = 0.8;
+            window.speechSynthesis.speak(u);
+        } catch(e) {}
+    },
+    stop: function() {
+        try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch(e) {}
+    }
+};
+
+// ================================================================
+// VIEW SWITCHING SYSTEM
+// ================================================================
+// ================================================================
+// VIEW SWITCHING SYSTEM
+// ================================================================
+let activeView = null;
+const levelInits = {};
+
+function switchTo(viewName) {
+    // Hide all views
+    document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+    // Show target view
+    const view = document.getElementById('view-' + viewName);
+    if (view) view.style.display = 'block';
+    activeView = viewName;
+    // Call init function for that view
+    if (levelInits[viewName]) levelInits[viewName]();
+}
+
+// ================================================================
+// LEVEL 3 - 离谱星人盘问
+// ================================================================
+// ================================================================
+// LEVEL 3 - Quiz Game
+// ================================================================
+(function() {
+    const $ = (id) => document.getElementById('l3-' + id);
+    const viewEl = () => document.getElementById('view-level3');
+    let canvas, ctx;
+    let W, H, time = 0;
+
+    function resize() {
+        if (!canvas) return;
+        W = canvas.width = innerWidth;
+        H = canvas.height = innerHeight;
+    }
+
+    const questions = [
+        {
+            q: '1+1 等于几？',
+            choices: ['2', '11', '王田丰', '你猜'],
+            correct: 2,
+            explain: '长老："王田丰？！这都什么和什么啊！离谱到无法反驳！"',
+            absurd: 30
+        },
+        {
+            q: '天空为什么是蓝色的？',
+            choices: ['瑞利散射', '上帝画的', '鱼在下面吹蓝色泡泡', '我怎么知道'],
+            correct: 2,
+            explain: '长老："鱼吹泡泡？！太离谱了……可是我无法证伪……"',
+            absurd: 25
+        },
+        {
+            q: '怎样才能最快从北京到上海？',
+            choices: ['坐飞机', '坐高铁', '闭上眼睛想一下', '打开地图看一眼'],
+            correct: 3,
+            explain: '长老："打开地图就到了？！我无言以对！"',
+            absurd: 25
+        },
+        {
+            q: '人为什么要睡觉？',
+            choices: ['恢复体力', '梦里有答案', '床在召唤', '不睡会被床嘲笑'],
+            correct: 3,
+            explain: '长老："被床嘲笑？！这……太离谱了！"',
+            absurd: 20
+        },
+        {
+            q: '为什么猫喜欢抓老鼠？',
+            choices: ['本能', '老鼠欠它钱', '猫和老鼠是CP', '因为猫不会抓狗'],
+            correct: 1,
+            explain: '长老："老鼠欠猫钱？！什么逻辑！但确实离谱！"',
+            absurd: 20
+        }
+    ];
+
+    let currentQ = 0;
+    let absurdLevel = 0;
+    let answered = false;
+    let timerLeft = 100;
+    let timerRAF = null;
+
+    function renderQuestion() {
+        const q = questions[currentQ];
+        $('q-num').textContent = `第 ${currentQ + 1} / ${questions.length} 题`;
+        $('q-text').textContent = q.q;
+
+        const choicesEl = $('q-choices');
+        choicesEl.innerHTML = '';
+        q.choices.forEach((c, i) => {
+            const div = document.createElement('div');
+            div.className = 'l3-quiz-choice';
+            div.innerHTML = `<div class="num">${'ABCD'[i]}</div><div>${c}</div>`;
+            div.onclick = () => answerQuestion(i);
+            choicesEl.appendChild(div);
+        });
+
+        answered = false;
+        timerLeft = 100;
+        startTimer();
+    }
+
+    function startTimer() {
+        if (timerRAF) cancelAnimationFrame(timerRAF);
+        function tick() {
+            if (answered || activeView !== 'level3') return;
+            timerLeft -= 0.12;
+            if (timerLeft <= 0) {
+                timerLeft = 0;
+                answerQuestion(-1);
+                return;
+            }
+            const fill = $('timer-fill');
+            fill.style.width = timerLeft + '%';
+            if (timerLeft < 30) fill.classList.add('warn');
+            else fill.classList.remove('warn');
+            timerRAF = requestAnimationFrame(tick);
+        }
+        timerRAF = requestAnimationFrame(tick);
+    }
+
+    function answerQuestion(idx) {
+        if (answered) return;
+        answered = true;
+        if (timerRAF) cancelAnimationFrame(timerRAF);
+
+        const q = questions[currentQ];
+        const choices = viewEl().querySelectorAll('.l3-quiz-choice');
+        choices.forEach(c => c.classList.add('disabled'));
+
+        if (idx === q.correct) {
+            choices[idx].classList.add('correct');
+            absurdLevel = Math.min(100, absurdLevel + q.absurd);
+            $('explain-result').textContent = '✓ 离谱成功！';
+            $('explain-result').style.color = 'var(--green)';
+            SFX.success();
+        } else {
+            if (idx >= 0) choices[idx].classList.add('wrong');
+            choices[q.correct].classList.add('correct');
+            absurdLevel = Math.min(100, absurdLevel + Math.floor(q.absurd * 0.3));
+            $('explain-result').textContent = idx === -1 ? '⏰ 超时了！' : '✗ 不够离谱';
+            $('explain-result').style.color = 'var(--red)';
+            SFX.fail();
+        }
+
+        $('explain-text').textContent = q.explain;
+        $('absurd-fill').style.width = absurdLevel + '%';
+        $('tangbao-body').textContent = `离谱指数 ${absurdLevel}/100`;
+
+        setTimeout(() => {
+            if (activeView !== 'level3') return;
+            $('explain-box').classList.add('show');
+        }, 600);
+    }
+
+    // Stars for background
+    const stars = [];
+    for (let i = 0; i < 100; i++) {
+        stars.push({ x: Math.random() * 1920, y: Math.random() * 1080, size: Math.random() * 2, twinkle: Math.random() * Math.PI * 2, vx: (Math.random() - 0.5) * 0.2 });
+    }
+
+    function drawBackground() {
+        // Pure black space
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, W, H);
+
+        // Subtle deep purple glow
+        const grad = ctx.createRadialGradient(W * 0.5, H * 0.5, 0, W * 0.5, H * 0.5, Math.max(W, H) * 0.5);
+        grad.addColorStop(0, 'rgba(130,80,220,0.05)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, H);
+
+        // Distant stars - minimal, serious
+        stars.forEach(s => {
+            s.x += s.vx;
+            if (s.x < 0) s.x = W;
+            if (s.x > W) s.x = 0;
+            const alpha = 0.15 + Math.sin(time * 0.015 + s.twinkle) * 0.15;
+            ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+            ctx.beginPath();
+            ctx.arc(s.x % W, s.y % H, s.size * 0.8, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Faint golden nebula band
+        ctx.save();
+        ctx.globalAlpha = 0.04;
+        var nebGrad = ctx.createLinearGradient(0, H * 0.3, W, H * 0.7);
+        nebGrad.addColorStop(0, 'rgba(255,170,0,0)');
+        nebGrad.addColorStop(0.5, 'rgba(255,170,0,0.8)');
+        nebGrad.addColorStop(1, 'rgba(255,170,0,0)');
+        ctx.fillStyle = nebGrad;
+        ctx.fillRect(0, H * 0.25, W, H * 0.5);
+        ctx.restore();
+    }
+
+    function render() {
+        if (activeView !== 'level3') return;
+        time++;
+        drawBackground();
+        requestAnimationFrame(render);
+    }
+
+    // Explain box click handler (set once; element exists in DOM at script execution time)
+    $('explain-box').onclick = function() {
+        $('explain-box').classList.remove('show');
+
+        if (currentQ < questions.length - 1) {
+            currentQ++;
+            setTimeout(renderQuestion, 300);
+        } else {
+            if (absurdLevel >= 50) {
+                SFX.success();
+                setTimeout(() => {
+                    if (activeView !== 'level3') return;
+                    $('pass-screen').classList.add('show');
+                }, 300);
+            } else {
+                $('tangbao-body').textContent = '离谱指数不够！重新答题';
+                currentQ = 0;
+                absurdLevel = 0;
+                $('absurd-fill').style.width = '0%';
+                setTimeout(renderQuestion, 500);
+            }
+        }
+    };
+
+    window.addEventListener('resize', function() {
+        if (activeView !== 'level3') return;
+        resize();
+    });
+
+    levelInits['level3'] = function init() {
+        canvas = document.getElementById('canvas-l3');
+        ctx = canvas.getContext('2d');
+        time = 0;
+        currentQ = 0;
+        absurdLevel = 0;
+        answered = false;
+        timerLeft = 100;
+        if (timerRAF) cancelAnimationFrame(timerRAF);
+
+        // Reset UI
+        $('pass-screen').classList.remove('show');
+        $('explain-box').classList.remove('show');
+        $('absurd-fill').style.width = '0%';
+        $('timer-fill').style.width = '100%';
+        $('timer-fill').classList.remove('warn');
+        $('tangbao-body').textContent = '\u9009\u62e9\u6700\u79bb\u8c31\u7684\u7b54\u6848\uff01\u79bb\u8c31\u6307\u6570\u6ee1\u683c\u5c31\u80fd\u8fc7\u5173';
+        TangbaoVoice.speak('\u4e3b\u4eba\uff01\u79bb\u8c31\u661f\u4eba\u6765\u4e86\uff01\u9009\u6700\u79bb\u8c31\u7684\u7b54\u6848\uff0c\u79bb\u8c31\u6307\u6570\u6ee1\u683c\u5c31\u80fd\u901a\u5173\uff01');
+
+        resize();
+        render();
+        renderQuestion();
+    };
+})();
+
+
+
+
+// ===== 独立文件启动:直接进入第3关 =====
+switchTo('level3');
+</script>
+</body>
+</html>
