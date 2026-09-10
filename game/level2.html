@@ -133,9 +133,9 @@ kbd{display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.08);borde
         <div style="font-size:25px;font-weight:800;color:var(--amber);letter-spacing:5px;text-shadow:0 0 20px rgba(251,191,36,0.4);margin-bottom:10px">星际海盗火力封锁</div>
         <div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:10px">选难度 · 选时长 · 挑战最高分</div>
         <div id="l2-diff-select">
-            <div class="l2-diff-btn" id="l2-diff-1" role="button" title="弹幕更少更慢 · 激光更少 · 伤害更低" onclick="L2_selectDiff(1)">🌱 轻松</div>
+            <div class="l2-diff-btn" id="l2-diff-1" role="button" title="敌机更少更慢" onclick="L2_selectDiff(1)">🌱 轻松</div>
             <div class="l2-diff-btn sel" id="l2-diff-2" role="button" title="标准平衡手感" onclick="L2_selectDiff(2)">⚔ 标准</div>
-            <div class="l2-diff-btn" id="l2-diff-3" role="button" title="弹幕又密又快 · 激光频繁 · 伤害更高" onclick="L2_selectDiff(3)">🔥 地狱</div>
+            <div class="l2-diff-btn" id="l2-diff-3" role="button" title="敌机又多又快" onclick="L2_selectDiff(3)">🔥 地狱</div>
         </div>
         <div id="l2-mode-select">
             <div class="l2-mode-card" role="button" tabindex="0" onclick="L2_selectMode(1)">
@@ -155,19 +155,17 @@ kbd{display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.08);borde
             </div>
         </div>
         <div style="background:rgba(15,15,25,0.72);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:12px;line-height:1.8;color:var(--cream);text-align:left;margin-bottom:10px">
-            <div style="color:var(--coral);font-weight:700;margin-bottom:4px">🔫 连珠炮</div>
-            <div style="color:rgba(255,255,255,0.82);margin-bottom:8px">一次连发 7 颗子弹，弹幕又多又慢 —— <span style="color:var(--teal)">放太空风筝飞上去就能撞掉（风筝与子弹同归于尽）</span></div>
-            <div style="color:#f87171;font-weight:700;margin-bottom:4px">🔴 大范围激光炮</div>
-            <div style="color:rgba(255,255,255,0.82);margin-bottom:8px">炮口泛红蓄力 2 秒 → 劈下宽幅红激光持续 2 秒，<span style="color:var(--amber)">风筝挡不住</span>，蓄力时<span style="color:var(--amber)">左右移开敌机正下方</span>躲避</div>
-            <div style="color:var(--teal);font-weight:700">🪁 清场规则</div>
-            <div style="color:rgba(255,255,255,0.82)">风筝撞上敌机能把它撞退出战场 —— <span style="color:var(--amber)">必须清光本波全部敌机，才能进入下一波</span>（波数由所选模式决定）</div>
+            <div style="color:var(--teal);font-weight:700;margin-bottom:4px">🪁 太空风筝</div>
+            <div style="color:rgba(255,255,255,0.82);margin-bottom:8px">风筝放出后自主飞行——<span style="color:var(--teal)">撞上敌机同归于尽，敌机当场被撞退出场</span>；清光本波全部敌机才能进入下一波</div>
+            <div style="color:var(--coral);font-weight:700;margin-bottom:4px">💀 海盗首领</div>
+            <div style="color:rgba(255,255,255,0.82)">每关<span style="color:var(--amber)">最后一波</span>出现首领旗舰（无尽模式<span style="color:var(--amber)">每 3 波</span>一次）：体积是小怪 3 倍，要被风筝<span style="color:var(--amber)">撞中 5 次</span>才会被撞退，撞退 +500 分</div>
         </div>
         <div style="font-size:12px;color:var(--muted)">方向键 ← → 左右移动 · 空格 发射太空风筝 · 点击上方模式卡开始</div>
     </div>
 
     <div id="l2-tangbao-panel" class="tangbao-panel">
         <div id="l2-tangbao-title" class="tangbao-title">糖包助手</div>
-        <div id="l2-tangbao-body" class="tangbao-body">空格放太空风筝：撞掉弹幕、撞退敌机清场！激光记得走位躲！</div>
+        <div id="l2-tangbao-body" class="tangbao-body">空格放太空风筝：撞退敌机清场！首领波记得留风筝围攻旗舰！</div>
     </div>
 
     <div class="pass-screen" id="l2-pass-screen">
@@ -430,16 +428,21 @@ function switchTo(viewName) {
     var gameMode = 0;            // 1=3波 2=5波 3=无限
     var diff = 2;                // 1=轻松 2=标准 3=地狱
     var score = 0;               // 得分: 撞退敌机+撞掉子弹+清波奖励+通关护盾奖励
-    // 难度参数表: burst=连发数 bulletVY=弹速 atkBase/atkRand=攻击间隔 laserMul=激光概率倍率 dmg=伤害 waveCounts=每波敌机数 speedMul=移速倍率
+    // 难度参数表: waveCounts=每波敌机数 speedMul=移速倍率(攻击已移除, 难度影响敌机数量与速度)
     var DIFFS = [
         null,
-        { name:'轻松', burst:5,  bulletVY:2.6, atkBase:280, atkRand:130, laserMul:0.7,  dmgBullet:5,  dmgLaser:3, waveCounts:[0,2,2,3,3,4], speedMul:0.85 },
-        { name:'标准', burst:7,  bulletVY:3.3, atkBase:200, atkRand:110, laserMul:1.0,  dmgBullet:7,  dmgLaser:4, waveCounts:[0,2,3,3,4,5], speedMul:1.0 },
-        { name:'地狱', burst:9,  bulletVY:4.1, atkBase:150, atkRand:90,  laserMul:1.3,  dmgBullet:10, dmgLaser:6, waveCounts:[0,3,3,4,5,6], speedMul:1.15 }
+        { name:'轻松', waveCounts:[0,2,2,3,3,4], speedMul:0.85 },
+        { name:'标准', waveCounts:[0,2,3,3,4,5], speedMul:1.0 },
+        { name:'地狱', waveCounts:[0,3,3,4,5,6], speedMul:1.15 }
     ];
+    // 海盗战机贴图(小怪=敌人战机, 首领=boss): 同源相对路径加载, 未加载完成时回退为几何图形
+    var enemyImg = new Image(), bossImg = new Image();
+    enemyImg.src = '敌人战机.png';
+    bossImg.src = 'boss.png';
+    var BOSS_HP = 5;             // 首领血量: 需被太空风筝撞中5次才被撞退
     var screenShake = 0, flashRed = 0, time = 0;
     var player = { x: 400, y: 520, speed: 6.5 };
-    var enemies = [], eBullets = [], particles = [], kites = [];
+    var enemies = [], particles = [], kites = [];
     var kiteCd = 0;
     var KITE_LAUNCH_CD = 32;   // 连放冷却约 0.5s(允许多风筝同时在场)
     var keys = {};
@@ -467,16 +470,17 @@ function switchTo(viewName) {
     }
 
     // ---------- 波次(敌机不会自动撤退, 必须用太空风筝逐架撞退才能清场) ----------
-    // 难度缩放敌机数量/移速/激光概率; 无限模式第6波起数量与激光率持续爬升
+    // 难度缩放敌机数量/移速; 限时模式最后一波出现首领, 无限模式每3波出现一次首领
     function spawnWave(n) {
         var D = DIFFS[diff];
         wave = n; waveActive = true;
         $('wave-info').textContent = gameMode === 3 ? ('第 ' + n + ' 波 · 无限') : ('第 ' + n + ' / ' + maxWave + ' 波');
+        var debugBoss = /[?&]boss=1/.test(location.search);   // 调试钩子: ?boss=1 每波都出首领
+        var isBossWave = debugBoss || ((gameMode === 3) ? (n % 3 === 0) : (n >= maxWave));
         var count;
         if (n <= 5) { count = D.waveCounts[n] || 3; }
         else { count = Math.min(7, 5 + Math.floor((n - 4) / 2)); }   // 无限模式: 第6波起 5→6→6→7 封顶
-        var laserBase = n <= 2 ? 0.25 : n === 3 ? 0.4 : 0.55;
-        if (n > 5) laserBase = Math.min(0.8, 0.55 + (n - 5) * 0.05); // 无限模式: 激光概率持续爬升
+        if (isBossWave) count = Math.max(1, count - 1);              // 首领波: 少放一只小怪
         enemies = [];
         for (var i=0;i<count;i++){
             enemies.push({
@@ -485,13 +489,26 @@ function switchTo(viewName) {
                 dir: Math.random()>0.5?1:-1,
                 moveSpeed: (0.7 + Math.random()*0.5 + n*0.06) * D.speedMul,
                 enterSpeed: 1.1,
-                attackTimer: 150 + i*45 + Math.random()*70,
-                laserChance: Math.min(0.85, laserBase * D.laserMul),
-                retreating: false, laser: null, burst: null
+                retreating: false
             });
         }
-        showBanner('第 ' + n + ' 波');
-        say('第' + n + '波敌机来袭！放太空风筝飞上去——风筝能撞退敌机、撞掉弹幕，清光本波才能进入下一波！', true);
+        if (isBossWave) {
+            // 首领: 体积≥小怪3倍(逻辑宽250/高140 vs 小怪54/42), 血量=5次风筝撞击
+            enemies.push({
+                boss: true, hp: BOSS_HP, maxHp: BOSS_HP,
+                x: W/2, y: -170, homeY: 118,
+                w: 250, h: 140,
+                dir: Math.random()>0.5?1:-1,
+                moveSpeed: 0.55 * D.speedMul,
+                enterSpeed: 0.9,
+                retreating: false
+            });
+            showBanner('第 ' + n + ' 波 · 首领来袭');
+            say('⚠ 海盗首领旗舰压阵！体积是普通敌机三倍，太空风筝要撞中' + BOSS_HP + '次才能把它撞退——先清小怪再围攻首领！', true);
+        } else {
+            showBanner('第 ' + n + ' 波');
+            say('第' + n + '波敌机来袭！放太空风筝飞上去——风筝撞上敌机就会把它撞退出场，清光本波才能进入下一波！', true);
+        }
     }
 
     // ---------- 太空风筝(自主飞行拦截体) ----------
@@ -512,7 +529,7 @@ function switchTo(viewName) {
         kiteCd = KITE_LAUNCH_CD;
         $('kite-btn').classList.add('cd');
         try { SFX.play(600,0.08,'sine',0.08); } catch(e){}
-        if (sayLock <= 0) { say('太空风筝放出去啦——自主飞上去，撞掉弹幕、撞退敌机！'); sayLock=70; }
+        if (sayLock <= 0) { say('太空风筝放出去啦——自主飞上去，撞中敌机把它撞退！'); sayLock=70; }
     }
     window.L2_launchKite = launchKite;
 
@@ -544,52 +561,38 @@ function switchTo(viewName) {
             }
             if (hitEnemy >= 0) {
                 var em = enemies[hitEnemy];
-                score += 100 + wave * 20;                 // 计分: 撞退敌机(波数越高分越多)
-                addParticles(em.x, em.y, '#fbbf24', 16);  // 敌机撞击光
+                var gain = 100 + wave * 20;               // 计分: 撞中敌机(波数越高分越多)
+                addParticles(em.x, em.y, '#fbbf24', 16);  // 撞击光
                 addParticles(em.x, em.y, '#2dd4bf', 12);  // 风筝碎片
                 addParticles(em.x, em.y, '#ffffff', 6);
-                screenShake = 10;
-                enemies.splice(hitEnemy, 1);              // 敌机退出战场
-                kites.splice(i,1);                        // 风筝消耗
+                screenShake = em.boss ? 14 : 10;
+                kites.splice(i,1);                        // 风筝消耗(同归于尽)
                 try { SFX.explode(); } catch(e){}
-                var left = enemies.length;
-                if (left > 0) {
-                    if (sayLock <= 0) { say('+'+(100+wave*20)+' 太空风筝一头撞上敌机——敌机被撞得翻滚着撤出战场！本波还剩 '+left+' 架，继续放风筝！'); sayLock=90; }
+                if (em.boss) {
+                    em.hp--;
+                    score += gain;
+                    if (em.hp <= 0) {
+                        score += 500;                     // 首领撞退奖励
+                        addParticles(em.x, em.y, '#ef4444', 30);
+                        enemies.splice(hitEnemy, 1);
+                        if (sayLock <= 0) { say('海盗首领旗舰被撞得爆炸解体！+500 分！', true); sayLock=90; }
+                    } else if (sayLock <= 0) {
+                        say('风筝撞中首领！还差 ' + em.hp + ' 次撞击就能把它撞退！+ ' + gain); sayLock=70;
+                    }
                 } else {
-                    if (sayLock <= 0) { say('最后一架敌机也被撞退，本波清场！', true); sayLock=90; }
+                    score += gain;
+                    enemies.splice(hitEnemy, 1);          // 小怪: 一击撞退
+                    var left = enemies.length;
+                    if (left > 0) {
+                        if (sayLock <= 0) { say('+'+gain+' 太空风筝一头撞上敌机——敌机被撞得翻滚着撤出战场！本波还剩 '+left+' 架，继续放风筝！'); sayLock=90; }
+                    } else {
+                        if (sayLock <= 0) { say('最后一架敌机也被撞退，本波清场！', true); sayLock=90; }
+                    }
                 }
                 continue;
             }
-            // —— 碰撞检测②: 风筝 × 连珠炮弹(圆形相交) → 相互抵消 ——
-            for (var j=eBullets.length-1;j>=0;j--){
-                var b = eBullets[j];
-                var dx = b.x - k.x, dy = b.y - k.y, rr = k.r + 5;
-                if (dx*dx + dy*dy < rr*rr) {
-                    score += 10;                          // 计分: 撞掉一颗子弹
-                    var mx=(k.x+b.x)/2, my=(k.y+b.y)/2;
-                    addParticles(mx,my,'#2dd4bf',9);   // 风筝碎片
-                    addParticles(mx,my,'#ff6688',9);   // 炮弹火花
-                    addParticles(mx,my,'#ffffff',5);   // 中心闪光
-                    eBullets.splice(j,1);              // 子弹清除
-                    kites.splice(i,1);                 // 风筝清除(同归于尽)
-                    try { SFX.play(300,0.12,'square',0.09); } catch(e){}
-                    if (sayLock <= 0) { say('太空风筝迎头撞上炮弹——啪，风筝和炮弹同归于尽！'); sayLock=80; }
-                    break;
-                }
-            }
         }
         $('kite-btn').classList.toggle('active', kites.length > 0);
-    }
-
-    // ---------- 敌机两种攻击 ----------
-    function enemyAttack(e) {
-        if (Math.random() < e.laserChance) {
-            e.laser = { phase:'charge', t:120 };  // 蓄力2秒, 激光从敌机正下方垂直射出
-            say('⚠ 激光炮充能：敌机炮口泛红蓄力2秒，随后劈下宽幅红激光——风筝挡不住，蓄力时赶紧离开它正下方！', true);
-        } else {
-            e.burst = { left: DIFFS[diff].burst, timer: 0 };  // 连珠炮(弹幕密集但飞得慢, 发数随难度)
-            say('连珠炮开火：一长串子弹又多又慢地压下来——快放太空风筝飞上去撞掉它们！');
-        }
     }
 
     function updateEnemies() {
@@ -598,76 +601,10 @@ function switchTo(viewName) {
             if (e.retreating) { e.y -= 2.2; e.x += e.dir*0.5; continue; }
             if (e.y < e.homeY) { e.y += e.enterSpeed; continue; }
             e.x += e.dir * e.moveSpeed;
-            if (e.x < 60 || e.x > W-60) e.dir *= -1;
-
-            if (e.burst) {
-                e.burst.timer--;
-                if (e.burst.timer <= 0 && e.burst.left > 0) {
-                    var aim = Math.max(-1.4, Math.min(1.4, (player.x - e.x)/300));
-                    eBullets.push({ x: e.x, y: e.y + e.h/2, vx: aim, vy: DIFFS[diff].bulletVY });  // 慢弹幕(弹速随难度)
-                    e.burst.left--; e.burst.timer = 11;
-                    try { SFX.play(220,0.04,'square',0.05); } catch(err){}
-                    if (e.burst.left <= 0) e.burst = null;
-                }
-            }
-
-            if (e.laser) {
-                var L = e.laser; L.t--;
-                if (L.phase === 'charge' && L.t <= 0) {
-                    L.phase = 'fire'; L.t = 120;  // 持续2秒
-                    say('激光炮轰下：宽幅红色激光持续2秒，被扫到持续掉护盾——快左右移开！');
-                    try { SFX.play(140,0.3,'sawtooth',0.12); } catch(err){}
-                } else if (L.phase === 'fire' && L.t <= 0) { e.laser = null; }
-            } else if (!e.burst) {
-                // 敌机无限开火, 直到被太空风筝撞退为止
-                e.attackTimer--;
-                if (e.attackTimer <= 0) {
-                    enemyAttack(e);
-                    e.attackTimer = DIFFS[diff].atkBase + Math.random()*DIFFS[diff].atkRand;
-                }
-            }
+            var margin = e.boss ? e.w * 0.35 : 60;
+            if (e.x < margin || e.x > W-margin) e.dir *= -1;
         }
         for (var j=enemies.length-1;j>=0;j--){ if (enemies[j].retreating && enemies[j].y < -120) enemies.splice(j,1); }
-    }
-
-    // ---------- 子弹(击中飞船) ----------
-    // 子弹被自主飞行的风筝碰撞抵消的逻辑在 updateKites 中处理
-    function updateBullets() {
-        for (var i=eBullets.length-1;i>=0;i--){
-            var b = eBullets[i];
-            b.x += b.vx; b.y += b.vy;
-            if (b.y > H+20 || b.y < -20) { eBullets.splice(i,1); continue; }
-            if (Math.abs(b.x - player.x) < 20 && Math.abs(b.y - player.y) < 20) {
-                hp -= DIFFS[diff].dmgBullet; screenShake = 8; flashRed = 6;
-                addParticles(player.x, player.y, '#ef4444', 6);
-                eBullets.splice(i,1);
-                if (hp <= 0) { hp=0; failGame(); }
-            }
-        }
-    }
-
-    // ---------- 激光(持续光束, 无法被风筝截断; 飞船走位躲避) ----------
-    // 激光从敌机正下方垂直射出(e.x); 持续光束风筝挡不住, 只能把飞船移开
-    // 风筝若自主飘进光束会被烧毁(同激光内子弹般移除), 提醒玩家激光要躲
-    function updateLasers() {
-        for (var i=0;i<enemies.length;i++){
-            var e = enemies[i];
-            if (!e.laser || e.laser.phase !== 'fire') continue;
-            var L = e.laser, halfW = 46;
-            // 飞船在光束内 → 持续扣护盾
-            if (Math.abs(player.x - e.x) < halfW) {
-                if (L.t % 10 === 0) { hp -= DIFFS[diff].dmgLaser; screenShake = 6; flashRed = 5; addParticles(player.x, player.y-10, '#ff3366', 3); if (hp<=0){hp=0;failGame();} }
-            }
-            // 风筝飘入光束 → 被烧毁(同归于尽, 但光束持续不中断)
-            for (var k=kites.length-1;k>=0;k--){
-                var kt = kites[k];
-                if (Math.abs(kt.x - e.x) < halfW && kt.y > e.y) {
-                    addParticles(kt.x, kt.y, '#ff6688', 8);
-                    addParticles(kt.x, kt.y, '#2dd4bf', 4);
-                    kites.splice(k,1);
-                }
-            }
-        }
     }
 
     function updateParticles() {
@@ -708,7 +645,7 @@ function switchTo(viewName) {
         if (keys['ArrowRight']||keys['d']||keys['D']) player.x += player.speed;
         player.x = Math.max(34, Math.min(W-34, player.x));
 
-        updateKites(); updateEnemies(); updateBullets(); updateLasers(); updateParticles();
+        updateKites(); updateEnemies(); updateParticles();
 
         if (screenShake>0) screenShake-=0.5;
         if (flashRed>0) flashRed-=0.5;
@@ -716,8 +653,7 @@ function switchTo(viewName) {
         if (hp<30) $('hp-fill').classList.add('low'); else $('hp-fill').classList.remove('low');
         $('score-info').textContent = '得分 ' + score;
 
-        var noLaser = enemies.every(function(en){ return !en.laser; });
-        if (waveActive && enemies.length===0 && eBullets.length===0 && noLaser) {
+        if (waveActive && enemies.length===0) {
             waveActive = false;
             score += 200 + Math.max(0, hp) * 2;   // 计分: 清波奖励 + 剩余护盾奖励
             if (wave >= maxWave) {
@@ -752,45 +688,32 @@ function switchTo(viewName) {
         for (var i=0;i<particles.length;i++){ var p=particles[i]; ctx.globalAlpha=p.life; ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2); ctx.fill(); }
         ctx.globalAlpha=1;
 
+        // 敌机: 海盗战机贴图(小怪=敌人战机.png, 首领=boss.png), 保持 2278:1280 原始宽高比; 贴图未就绪时回退几何图形
         for (var i=0;i<enemies.length;i++){
             var e=enemies[i];
-            ctx.save(); ctx.translate(e.x,e.y);
-            var charging = e.laser && e.laser.phase==='charge';
-            var firing = e.laser && e.laser.phase==='fire';
-            ctx.fillStyle = firing ? '#ff2244' : '#cc4477';
-            ctx.shadowBlur = firing?16:(charging?10:6); ctx.shadowColor='rgba(255,51,102,0.6)';
-            ctx.beginPath();
-            ctx.moveTo(0,e.h/2); ctx.lineTo(-e.w/2,-e.h/4); ctx.lineTo(-e.w/3,-e.h/2);
-            ctx.lineTo(e.w/3,-e.h/2); ctx.lineTo(e.w/2,-e.h/4); ctx.closePath(); ctx.fill();
-            ctx.shadowBlur=0;
-            ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0,-2,5,0,Math.PI*2); ctx.fill();
-            ctx.fillStyle='#000'; ctx.fillRect(-2,-4,1.5,1.5); ctx.fillRect(0.5,-4,1.5,1.5);
-            if (charging) { var pu=0.5+0.5*Math.sin(time*0.4); ctx.fillStyle='rgba(255,40,70,'+(0.5+pu*0.5)+')'; ctx.beginPath(); ctx.arc(0,e.h/2+6,8+pu*8,0,Math.PI*2); ctx.fill(); }
-            ctx.restore();
-
-            if (e.laser) {
-                var L=e.laser, halfW=46;
-                if (L.phase==='charge') {
-                    ctx.save();
-                    ctx.strokeStyle='rgba(255,60,90,'+(0.3+0.3*Math.sin(time*0.4))+')';
-                    ctx.lineWidth=2; ctx.setLineDash([10,10]);
-                    ctx.beginPath(); ctx.moveTo(e.x,e.y); ctx.lineTo(e.x,H); ctx.stroke();
-                    ctx.restore();
-                } else {
-                    var bottom = H;
-                    var grd = ctx.createLinearGradient(0,e.y,0,bottom);
-                    grd.addColorStop(0,'rgba(255,60,90,0.85)'); grd.addColorStop(1,'rgba(255,40,70,0.35)');
-                    ctx.fillStyle=grd; ctx.shadowBlur=24; ctx.shadowColor='rgba(255,50,80,0.7)';
-                    ctx.fillRect(e.x-halfW, e.y, halfW*2, bottom-e.y);
-                    ctx.shadowBlur=0;
-                    ctx.fillStyle='rgba(255,220,225,0.8)'; ctx.fillRect(e.x-4,e.y,8,bottom-e.y);
-                }
+            var img = e.boss ? bossImg : enemyImg;
+            var dh = e.h, dw = e.w;
+            if (img.complete && img.naturalWidth) {
+                dw = e.h * (img.naturalWidth / img.naturalHeight); // 按原图比例定宽, 高度取逻辑值
+                dh = e.h;
+                ctx.drawImage(img, e.x - dw/2, e.y - dh/2, dw, dh);
+            } else {
+                ctx.save(); ctx.translate(e.x,e.y);
+                ctx.fillStyle = e.boss ? '#992244' : '#cc4477';
+                ctx.beginPath();
+                ctx.moveTo(0,e.h/2); ctx.lineTo(-e.w/2,-e.h/4); ctx.lineTo(-e.w/3,-e.h/2);
+                ctx.lineTo(e.w/3,-e.h/2); ctx.lineTo(e.w/2,-e.h/4); ctx.closePath(); ctx.fill();
+                ctx.restore();
+            }
+            // 首领头顶血条(5格)
+            if (e.boss) {
+                var bw = e.w * 0.6, bx = e.x - bw/2, by = e.y - e.h/2 - 18;
+                ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.fillRect(bx,by,bw,7);
+                ctx.fillStyle = e.hp > 2 ? '#ef4444' : '#fbbf24';
+                ctx.fillRect(bx,by,bw*Math.max(0,e.hp)/e.maxHp,7);
+                ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1; ctx.strokeRect(bx,by,bw,7);
             }
         }
-
-        ctx.fillStyle='#ff3366'; ctx.shadowBlur=6; ctx.shadowColor='rgba(255,51,102,0.6)';
-        for (var i=0;i<eBullets.length;i++){ ctx.beginPath(); ctx.arc(eBullets[i].x,eBullets[i].y,4.5,0,Math.PI*2); ctx.fill(); }
-        ctx.shadowBlur=0;
 
         // 自主飞行的太空风筝群(无连线, 放出后不受控; 随旋转轻摆 + 飘尾)
         for (var ki=0;ki<kites.length;ki++){
@@ -886,7 +809,7 @@ function switchTo(viewName) {
             if (dbtn) dbtn.classList.toggle('sel', i === diff);
         }
         screenShake=0; flashRed=0; time=0;
-        enemies=[]; eBullets=[]; particles=[]; kites=[];
+        enemies=[]; particles=[]; kites=[];
         kiteCd=0;
         keys={}; waveDelay=0; waveActive=false; sayLock=0;
         resize();
@@ -899,8 +822,8 @@ function switchTo(viewName) {
         $('kite-btn').classList.remove('cd'); $('kite-btn').classList.remove('active');
         $('wave-banner').classList.remove('show');
         $('start-prompt').style.display='';
-        $('tangbao-body').textContent='选择难度和时长模式开始！空格放太空风筝：撞掉连珠炮弹幕、撞退敌机！激光要走位躲！';
-        try { TangbaoVoice.speak('海盗火力封锁！先选难度和时长模式开始挑战。连珠炮弹幕又多又慢，放太空风筝飞上去撞掉；激光炮风筝挡不住，蓄力时左右躲开。风筝撞上敌机就能把它撞退出场，清光本波全部敌机才能进入下一波！'); } catch(e){}
+        $('tangbao-body').textContent='选择难度和时长模式开始！空格放太空风筝撞退敌机；每关最后一波有海盗首领，撞它5次才能击退！';
+        try { TangbaoVoice.speak('海盗火力封锁！先选难度和时长模式开始挑战。放太空风筝飞上去，撞上敌机就把它撞退出场，清光本波全部敌机进入下一波。每关最后一波有海盗首领旗舰，体积三倍，要撞中五次才能撞退，小心应对！'); } catch(e){}
         loadHighScores();
 
         if (canvas && !canvas._l2touch) {
