@@ -156,9 +156,11 @@ kbd{display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.08);borde
         </div>
         <div style="background:rgba(15,15,25,0.72);border:1px solid var(--border);border-radius:12px;padding:10px 14px;font-size:12px;line-height:1.8;color:var(--cream);text-align:left;margin-bottom:10px">
             <div style="color:var(--teal);font-weight:700;margin-bottom:4px">🪁 太空风筝</div>
-            <div style="color:rgba(255,255,255,0.82);margin-bottom:8px">风筝放出后自主飞行——<span style="color:var(--teal)">撞上敌机同归于尽，敌机当场被撞退出场</span>；清光本波全部敌机才能进入下一波</div>
-            <div style="color:var(--coral);font-weight:700;margin-bottom:4px">💀 海盗首领</div>
-            <div style="color:rgba(255,255,255,0.82)">每关<span style="color:var(--amber)">最后一波</span>出现首领旗舰（无尽模式<span style="color:var(--amber)">每 3 波</span>一次）：体积是小怪 3 倍，要被风筝<span style="color:var(--amber)">撞中 5 次</span>才会被撞退，撞退 +500 分</div>
+            <div style="color:rgba(255,255,255,0.82);margin-bottom:8px">风筝放出后自主飞行——<span style="color:var(--teal)">撞炮弹同归于尽、撞敌机把它撞退</span>；清光本波全部敌机才能进入下一波</div>
+            <div style="color:var(--coral);font-weight:700;margin-bottom:4px">🔫 敌机炮火</div>
+            <div style="color:rgba(255,255,255,0.82);margin-bottom:8px">小怪会瞄准你发射<span style="color:#ff6688">粉色炮弹</span>——放风筝撞掉或走位躲开</div>
+            <div style="color:var(--amber);font-weight:700;margin-bottom:4px">💀 海盗首领（双模式）</div>
+            <div style="color:rgba(255,255,255,0.82)">每关最后一波出现（无尽每3波）：体积3倍、血量极厚，每5秒交替两种模式——<br>· <span style="color:#ff7744">炮弹型</span>：扇形弹幕，放风筝撞掉<br>· <span style="color:#ff3366">激光型</span>：炮口蓄力1.5秒后劈下宽幅激光，<span style="color:var(--amber)">风筝挡不住，蓄力时左右移开</span></div>
         </div>
         <div style="font-size:12px;color:var(--muted)">方向键 ← → 左右移动 · 空格 发射太空风筝 · 点击上方模式卡开始</div>
     </div>
@@ -428,21 +430,21 @@ function switchTo(viewName) {
     var gameMode = 0;            // 1=3波 2=5波 3=无限
     var diff = 2;                // 1=轻松 2=标准 3=地狱
     var score = 0;               // 得分: 撞退敌机+撞掉子弹+清波奖励+通关护盾奖励
-    // 难度参数表: waveCounts=每波敌机数 speedMul=移速倍率(攻击已移除, 难度影响敌机数量与速度)
+    // 难度参数表: waveCounts=每波敌机数 speedMul=移速倍率 atkMul=攻击频率倍率 dmgMul=伤害倍率
     var DIFFS = [
         null,
-        { name:'轻松', waveCounts:[0,2,2,3,3,4], speedMul:0.85 },
-        { name:'标准', waveCounts:[0,2,3,3,4,5], speedMul:1.0 },
-        { name:'地狱', waveCounts:[0,3,3,4,5,6], speedMul:1.15 }
+        { name:'轻松', waveCounts:[0,3,3,4,4,5], speedMul:0.85, atkMul:1.35, dmgMul:0.8 },
+        { name:'标准', waveCounts:[0,3,4,4,5,6], speedMul:1.0,  atkMul:1.0,  dmgMul:1.0 },
+        { name:'地狱', waveCounts:[0,4,4,5,6,7], speedMul:1.15, atkMul:0.72, dmgMul:1.3 }
     ];
     // 海盗战机贴图(小怪=敌人战机, 首领=boss): 同源相对路径加载, 未加载完成时回退为几何图形
     var enemyImg = new Image(), bossImg = new Image();
     enemyImg.src = '敌人战机.png';
     bossImg.src = 'boss.png';
-    var BOSS_HP = 5;             // 首领血量: 需被太空风筝撞中5次才被撞退
+    var BOSS_HP = 18;            // 首领血量: 需被太空风筝撞中18次才被撞退
     var screenShake = 0, flashRed = 0, time = 0;
     var player = { x: 400, y: 520, speed: 6.5 };
-    var enemies = [], particles = [], kites = [];
+    var enemies = [], eBullets = [], particles = [], kites = [];
     var kiteCd = 0;
     var KITE_LAUNCH_CD = 32;   // 连放冷却约 0.5s(允许多风筝同时在场)
     var keys = {};
@@ -479,21 +481,22 @@ function switchTo(viewName) {
         var isBossWave = debugBoss || ((gameMode === 3) ? (n % 3 === 0) : (n >= maxWave));
         var count;
         if (n <= 5) { count = D.waveCounts[n] || 3; }
-        else { count = Math.min(7, 5 + Math.floor((n - 4) / 2)); }   // 无限模式: 第6波起 5→6→6→7 封顶
-        if (isBossWave) count = Math.max(1, count - 1);              // 首领波: 少放一只小怪
+        else { count = Math.min(8, 5 + Math.floor((n - 4) / 2)); }   // 无限模式: 第6波起 5→6→6→7→7→8 封顶
+        if (isBossWave) count = Math.max(2, count - 1);              // 首领波: 少放一只小怪
         enemies = [];
         for (var i=0;i<count;i++){
             enemies.push({
                 x: (W/(count+1))*(i+1), y: -70 - i*50, homeY: 96 + (i%2)*52,
-                w: 54, h: 42,
+                w: 65, h: 50,                  // 体积放大1.2倍(原54×42)
                 dir: Math.random()>0.5?1:-1,
                 moveSpeed: (0.7 + Math.random()*0.5 + n*0.06) * D.speedMul,
                 enterSpeed: 1.1,
+                attackTimer: 90 + Math.random()*90,   // 首发射弹延迟
                 retreating: false
             });
         }
         if (isBossWave) {
-            // 首领: 体积≥小怪3倍(逻辑宽250/高140 vs 小怪54/42), 血量=5次风筝撞击
+            // 首领: 体积是小怪约3倍; 血量=18次风筝撞击; 两种攻击模式交替(炮弹型/激光型)
             enemies.push({
                 boss: true, hp: BOSS_HP, maxHp: BOSS_HP,
                 x: W/2, y: -170, homeY: 118,
@@ -501,13 +504,17 @@ function switchTo(viewName) {
                 dir: Math.random()>0.5?1:-1,
                 moveSpeed: 0.55 * D.speedMul,
                 enterSpeed: 0.9,
+                attackTimer: 120,
+                attackMode: 'shell',          // 'shell'炮弹型 / 'laser'激光型, 交替切换
+                modeTimer: 300,               // 每5秒切换一次模式
+                burst: null, laser: null,
                 retreating: false
             });
             showBanner('第 ' + n + ' 波 · 首领来袭');
-            say('⚠ 海盗首领旗舰压阵！体积是普通敌机三倍，太空风筝要撞中' + BOSS_HP + '次才能把它撞退——先清小怪再围攻首领！', true);
+            say('⚠ 海盗首领旗舰压阵！体积三倍，血量极厚，风筝要撞中' + BOSS_HP + '次才能击退——它会交替发射炮弹群与宽幅激光，小心躲避！', true);
         } else {
             showBanner('第 ' + n + ' 波');
-            say('第' + n + '波敌机来袭！放太空风筝飞上去——风筝撞上敌机就会把它撞退出场，清光本波才能进入下一波！', true);
+            say('第' + n + '波敌机来袭！敌机会发射炮弹——放太空风筝飞上去，撞掉炮弹、撞退敌机，清光本波才能进入下一波！', true);
         }
     }
 
@@ -591,11 +598,31 @@ function switchTo(viewName) {
                 }
                 continue;
             }
+            // —— 碰撞检测②: 风筝 × 炮弹(圆形相交) → 相互抵消 ——
+            for (var j=eBullets.length-1;j>=0;j--){
+                var b = eBullets[j];
+                var dx = b.x - k.x, dy = b.y - k.y, rr = k.r + 6;
+                if (dx*dx + dy*dy < rr*rr) {
+                    score += 10;                          // 计分: 撞掉一颗炮弹
+                    var mx=(k.x+b.x)/2, my=(k.y+b.y)/2;
+                    addParticles(mx,my,'#2dd4bf',9);    // 风筝碎片
+                    addParticles(mx,my,'#ff6688',9);    // 炮弹火花
+                    addParticles(mx,my,'#ffffff',5);    // 中心闪光
+                    eBullets.splice(j,1);               // 炮弹清除
+                    kites.splice(i,1);                  // 风筝清除(同归于尽)
+                    try { SFX.play(300,0.12,'square',0.09); } catch(e){}
+                    if (sayLock <= 0) { say('太空风筝迎头撞上炮弹——啪，风筝和炮弹同归于尽！'); sayLock=80; }
+                    break;
+                }
+            }
         }
         $('kite-btn').classList.toggle('active', kites.length > 0);
     }
 
+    // ---------- 敌机移动 + 攻击 ----------
+    // 小兵: 单发炮弹(瞄准玩家); Boss: 炮弹型(5发扇形)/激光型(蓄力→宽幅激光), 每5秒交替
     function updateEnemies() {
+        var D = DIFFS[diff];
         for (var i=0;i<enemies.length;i++){
             var e = enemies[i];
             if (e.retreating) { e.y -= 2.2; e.x += e.dir*0.5; continue; }
@@ -603,8 +630,106 @@ function switchTo(viewName) {
             e.x += e.dir * e.moveSpeed;
             var margin = e.boss ? e.w * 0.35 : 60;
             if (e.x < margin || e.x > W-margin) e.dir *= -1;
+
+            if (e.boss) {
+                // Boss: 模式切换计时
+                e.modeTimer--;
+                if (e.modeTimer <= 0) {
+                    e.attackMode = (e.attackMode === 'shell') ? 'laser' : 'shell';
+                    e.modeTimer = 300;   // 每5秒切换
+                    e.burst = null; e.laser = null;
+                    e.attackTimer = 60;  // 切换后短暂停顿
+                    if (e.attackMode === 'shell') say('首领切换为炮弹型——扇形弹幕压下来，放风筝撞掉！');
+                    else say('首领切换为激光型——炮口蓄力，快离开它正下方！');
+                }
+                // Boss 攻击
+                if (e.laser) {
+                    var L = e.laser; L.t--;
+                    if (L.phase === 'charge' && L.t <= 0) {
+                        L.phase = 'fire'; L.t = 90;   // 激光持续1.5秒
+                        try { SFX.play(140,0.3,'sawtooth',0.12); } catch(err){}
+                    } else if (L.phase === 'fire' && L.t <= 0) { e.laser = null; }
+                } else if (e.burst) {
+                    e.burst.timer--;
+                    if (e.burst.timer <= 0 && e.burst.left > 0) {
+                        // 扇形5发炮弹
+                        for (var bi=-2; bi<=2; bi++){
+                            var angle = bi * 0.18 + (player.x - e.x) * 0.0008;
+                            eBullets.push({ x: e.x, y: e.y + e.h/2, vx: Math.sin(angle)*4.2, vy: Math.cos(angle)*4.2 + 1.5, boss: true });
+                        }
+                        e.burst.left--; e.burst.timer = 22;
+                        try { SFX.play(220,0.05,'square',0.06); } catch(err){}
+                        if (e.burst.left <= 0) e.burst = null;
+                    }
+                } else {
+                    e.attackTimer--;
+                    if (e.attackTimer <= 0) {
+                        if (e.attackMode === 'shell') {
+                            e.burst = { left: 3, timer: 0 };   // 3轮扇形炮弹
+                            e.attackTimer = 180;
+                        } else {
+                            e.laser = { phase:'charge', t: 90 }; // 蓄力1.5秒
+                            e.attackTimer = 180;
+                            say('首领激光蓄力！炮口泛红——快左右躲开！');
+                        }
+                    }
+                }
+            } else {
+                // 小兵: 单发瞄准炮弹
+                e.attackTimer--;
+                if (e.attackTimer <= 0) {
+                    var aim = Math.max(-1.6, Math.min(1.6, (player.x - e.x)/280));
+                    eBullets.push({ x: e.x, y: e.y + e.h/2, vx: aim, vy: 3.2 });
+                    e.attackTimer = (130 + Math.random()*80) * D.atkMul;
+                    try { SFX.play(330,0.03,'square',0.04); } catch(err){}
+                }
+            }
         }
         for (var j=enemies.length-1;j>=0;j--){ if (enemies[j].retreating && enemies[j].y < -120) enemies.splice(j,1); }
+    }
+
+    // ---------- 炮弹(击中飞船) ----------
+    function updateBullets() {
+        var D = DIFFS[diff];
+        for (var i=eBullets.length-1;i>=0;i--){
+            var b = eBullets[i];
+            b.x += b.vx; b.y += b.vy;
+            if (b.y > H+20 || b.y < -20 || b.x < -30 || b.x > W+30) { eBullets.splice(i,1); continue; }
+            if (Math.abs(b.x - player.x) < 18 && Math.abs(b.y - player.y) < 22) {
+                hp -= Math.round((b.boss ? 10 : 6) * D.dmgMul);
+                screenShake = 8; flashRed = 6;
+                addParticles(player.x, player.y, '#ef4444', 6);
+                eBullets.splice(i,1);
+                if (hp <= 0) { hp=0; failGame(); }
+            }
+        }
+    }
+
+    // ---------- Boss激光(持续光束, 无法被风筝截断; 飞船走位躲避) ----------
+    // 激光从Boss正下方垂直射出(e.x); 风筝飘入会被烧毁
+    function updateLasers() {
+        var D = DIFFS[diff];
+        for (var i=0;i<enemies.length;i++){
+            var e = enemies[i];
+            if (!e.boss || !e.laser || e.laser.phase !== 'fire') continue;
+            var L = e.laser, halfW = 52;
+            if (Math.abs(player.x - e.x) < halfW) {
+                if (L.t % 10 === 0) {
+                    hp -= Math.round(5 * D.dmgMul);
+                    screenShake = 6; flashRed = 5;
+                    addParticles(player.x, player.y-10, '#ff3366', 3);
+                    if (hp<=0){hp=0;failGame();}
+                }
+            }
+            for (var k=kites.length-1;k>=0;k--){
+                var kt = kites[k];
+                if (Math.abs(kt.x - e.x) < halfW && kt.y > e.y) {
+                    addParticles(kt.x, kt.y, '#ff6688', 8);
+                    addParticles(kt.x, kt.y, '#2dd4bf', 4);
+                    kites.splice(k,1);
+                }
+            }
+        }
     }
 
     function updateParticles() {
@@ -645,7 +770,7 @@ function switchTo(viewName) {
         if (keys['ArrowRight']||keys['d']||keys['D']) player.x += player.speed;
         player.x = Math.max(34, Math.min(W-34, player.x));
 
-        updateKites(); updateEnemies(); updateParticles();
+        updateKites(); updateEnemies(); updateBullets(); updateLasers(); updateParticles();
 
         if (screenShake>0) screenShake-=0.5;
         if (flashRed>0) flashRed-=0.5;
@@ -705,13 +830,49 @@ function switchTo(viewName) {
                 ctx.lineTo(e.w/3,-e.h/2); ctx.lineTo(e.w/2,-e.h/4); ctx.closePath(); ctx.fill();
                 ctx.restore();
             }
-            // 首领头顶血条(5格)
+            // 首领头顶血条
             if (e.boss) {
                 var bw = e.w * 0.6, bx = e.x - bw/2, by = e.y - e.h/2 - 18;
                 ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.fillRect(bx,by,bw,7);
-                ctx.fillStyle = e.hp > 2 ? '#ef4444' : '#fbbf24';
+                ctx.fillStyle = e.hp > e.maxHp*0.3 ? '#ef4444' : '#fbbf24';
                 ctx.fillRect(bx,by,bw*Math.max(0,e.hp)/e.maxHp,7);
                 ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1; ctx.strokeRect(bx,by,bw,7);
+                // 激光蓄力/发射渲染
+                if (e.laser) {
+                    var Lz = e.laser, halfW = 52;
+                    if (Lz.phase === 'charge') {
+                        var pu = 0.5+0.5*Math.sin(time*0.4);
+                        ctx.fillStyle='rgba(255,40,70,'+(0.5+pu*0.5)+')';
+                        ctx.beginPath(); ctx.arc(e.x, e.y+e.h/2+6, 10+pu*10, 0, Math.PI*2); ctx.fill();
+                        ctx.save();
+                        ctx.strokeStyle='rgba(255,60,90,'+(0.3+0.3*Math.sin(time*0.4))+')';
+                        ctx.lineWidth=2; ctx.setLineDash([10,10]);
+                        ctx.beginPath(); ctx.moveTo(e.x, e.y+e.h/2); ctx.lineTo(e.x, H); ctx.stroke();
+                        ctx.restore();
+                    } else {
+                        var grd = ctx.createLinearGradient(0, e.y, 0, H);
+                        grd.addColorStop(0,'rgba(255,60,90,0.85)'); grd.addColorStop(1,'rgba(255,40,70,0.35)');
+                        ctx.fillStyle=grd; ctx.shadowBlur=24; ctx.shadowColor='rgba(255,50,80,0.7)';
+                        ctx.fillRect(e.x-halfW, e.y+e.h/2, halfW*2, H-(e.y+e.h/2));
+                        ctx.shadowBlur=0;
+                        ctx.fillStyle='rgba(255,220,225,0.8)'; ctx.fillRect(e.x-5, e.y+e.h/2, 10, H-(e.y+e.h/2));
+                    }
+                }
+            }
+        }
+
+        // 炮弹: 小兵=粉色小圆, Boss炮弹=更大更亮的橙红
+        for (var bi=0;bi<eBullets.length;bi++){
+            var bb = eBullets[bi];
+            if (bb.boss) {
+                ctx.fillStyle='#ff5522'; ctx.shadowBlur=10; ctx.shadowColor='rgba(255,85,34,0.8)';
+                ctx.beginPath(); ctx.arc(bb.x, bb.y, 7, 0, Math.PI*2); ctx.fill();
+                ctx.shadowBlur=0;
+                ctx.fillStyle='#ffcc99'; ctx.beginPath(); ctx.arc(bb.x-1, bb.y-1, 3, 0, Math.PI*2); ctx.fill();
+            } else {
+                ctx.fillStyle='#ff3366'; ctx.shadowBlur=6; ctx.shadowColor='rgba(255,51,102,0.6)';
+                ctx.beginPath(); ctx.arc(bb.x, bb.y, 5, 0, Math.PI*2); ctx.fill();
+                ctx.shadowBlur=0;
             }
         }
 
@@ -809,7 +970,7 @@ function switchTo(viewName) {
             if (dbtn) dbtn.classList.toggle('sel', i === diff);
         }
         screenShake=0; flashRed=0; time=0;
-        enemies=[]; particles=[]; kites=[];
+        enemies=[]; eBullets=[]; particles=[]; kites=[];
         kiteCd=0;
         keys={}; waveDelay=0; waveActive=false; sayLock=0;
         resize();
@@ -822,8 +983,8 @@ function switchTo(viewName) {
         $('kite-btn').classList.remove('cd'); $('kite-btn').classList.remove('active');
         $('wave-banner').classList.remove('show');
         $('start-prompt').style.display='';
-        $('tangbao-body').textContent='选择难度和时长模式开始！空格放太空风筝撞退敌机；每关最后一波有海盗首领，撞它5次才能击退！';
-        try { TangbaoVoice.speak('海盗火力封锁！先选难度和时长模式开始挑战。放太空风筝飞上去，撞上敌机就把它撞退出场，清光本波全部敌机进入下一波。每关最后一波有海盗首领旗舰，体积三倍，要撞中五次才能撞退，小心应对！'); } catch(e){}
+        $('tangbao-body').textContent='选择难度和时长模式开始！空格放太空风筝撞炮弹、撞退敌机；首领有炮弹/激光双模式，激光要走位躲！';
+        try { TangbaoVoice.speak('海盗火力封锁！先选难度和时长模式。小怪会发射炮弹，放风筝撞掉或躲开；首领有两种模式交替，炮弹型放风筝撞，激光型赶紧左右躲开，风筝撞中首领18次才能击退！'); } catch(e){}
         loadHighScores();
 
         if (canvas && !canvas._l2touch) {
