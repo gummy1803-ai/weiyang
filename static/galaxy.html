@@ -79,6 +79,131 @@
             50% { box-shadow: 0 0 30px rgba(251, 170, 60, 0.75); }
         }
 
+        /* ===== 剧情引导弹层(检票通过后提示开启剧情) ===== */
+        #story-guide-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 90;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(ellipse at center, rgba(10, 8, 22, 0.72), rgba(0, 0, 0, 0.88));
+            backdrop-filter: blur(6px);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        #story-guide-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .guide-card {
+            position: relative;
+            max-width: 540px;
+            width: calc(100% - 48px);
+            padding: 42px 44px 36px;
+            text-align: center;
+            background: linear-gradient(165deg, rgba(24, 18, 44, 0.96), rgba(8, 8, 16, 0.97));
+            border: 1px solid rgba(251, 191, 36, 0.45);
+            border-radius: 14px;
+            box-shadow: 0 0 60px rgba(150, 100, 255, 0.22), inset 0 0 40px rgba(251, 191, 36, 0.05);
+            transform: translateY(14px) scale(0.98);
+            transition: transform 0.5s ease;
+        }
+        #story-guide-overlay.show .guide-card { transform: translateY(0) scale(1); }
+        .guide-emblem {
+            font-size: 40px;
+            line-height: 1;
+            margin-bottom: 14px;
+            filter: drop-shadow(0 0 14px rgba(251, 191, 36, 0.65));
+        }
+        .guide-sub {
+            font-size: 11px;
+            letter-spacing: 4px;
+            color: rgba(196, 181, 253, 0.75);
+            margin-bottom: 12px;
+        }
+        .guide-title {
+            margin: 0;
+            font-size: 30px;
+            font-weight: 800;
+            letter-spacing: 6px;
+            text-indent: 6px;
+            color: #f3e8ff;
+            text-shadow: 0 0 20px rgba(167, 139, 250, 0.65);
+        }
+        .guide-title #guide-nickname {
+            color: #fbbf24;
+            letter-spacing: 2px;
+            text-indent: 2px;
+        }
+        .guide-divider {
+            width: 64px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.8), transparent);
+            margin: 22px auto 20px;
+        }
+        .guide-desc {
+            margin: 0 0 28px;
+            font-size: 14px;
+            line-height: 2.1;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.72);
+        }
+        .guide-desc b { color: #fbbf24; font-weight: 700; }
+        #guide-start-btn {
+            display: block;
+            width: 100%;
+            padding: 14px 0;
+            border: none;
+            border-radius: 26px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 6px;
+            text-indent: 6px;
+            color: #1a1206;
+            background: linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b);
+            box-shadow: 0 0 26px rgba(251, 170, 60, 0.45);
+            transition: all 0.25s;
+        }
+        #guide-start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 38px rgba(251, 170, 60, 0.75);
+        }
+        #guide-explore-btn {
+            display: block;
+            width: 100%;
+            margin-top: 12px;
+            padding: 10px 0;
+            border: 1.5px solid rgba(167, 139, 250, 0.45);
+            border-radius: 24px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: #c4b5fd;
+            background: rgba(15, 15, 35, 0.6);
+            transition: all 0.25s;
+        }
+        #guide-explore-btn:hover {
+            border-color: rgba(167, 139, 250, 0.85);
+            box-shadow: 0 0 18px rgba(167, 139, 250, 0.4);
+        }
+        .guide-note {
+            margin-top: 16px;
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.32);
+        }
+        @media (max-width: 600px) {
+            .guide-card { padding: 32px 26px 28px; }
+            .guide-title { font-size: 24px; letter-spacing: 4px; text-indent: 4px; }
+            .guide-desc { font-size: 13px; line-height: 2; }
+        }
+
         .instruction {
             margin-top: 10px;
             font-size: 0.9rem;
@@ -826,6 +951,24 @@
         <div id="gesture-status" class="status">等待手势...</div>
     </div>
 
+    <!-- 剧情引导弹层:检票登录成功后提示开启剧情 -->
+    <div id="story-guide-overlay">
+        <div class="guide-card">
+            <div class="guide-emblem">🎫</div>
+            <div class="guide-sub">TICKET CHECKED · WELCOME ABOARD</div>
+            <h2 class="guide-title">检票通过<span id="guide-nickname"></span></h2>
+            <div class="guide-divider"></div>
+            <p class="guide-desc">
+                欢迎登入<b>离谱星系</b>，你的星际旅程已就绪。<br>
+                从卡冈图雅的<b>序章</b>出发，穿越四关冒险，<br>
+                直至终章<b>回家</b>——现在，开启剧情吧。
+            </p>
+            <button id="guide-start-btn">🎬 开启剧情</button>
+            <button id="guide-explore-btn">先自由探索星系</button>
+            <div class="guide-note">稍后也可点击左下角「🚀 开始星际旅程」随时进入</div>
+        </div>
+    </div>
+
     <!-- 星系形成文字覆盖层(顶部) -->
     <div id="formation-overlay">
         <div class="formation-title"></div>
@@ -885,6 +1028,6 @@
     <div id="canvas-container"></div>
 
     <!-- 装配器入口:星球清单见 src/planets/index.js -->
-    <script type="module" src="./src/main.js?v=20260912v6"></script>
+    <script type="module" src="./src/main.js?v=20260912v7"></script>
 </body>
 </html>

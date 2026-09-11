@@ -64,6 +64,12 @@ let camReadyPromise = null;
 let assetState = 'loading'; // 'loading' | 'ready' | 'failed'
 const progressFill = document.getElementById('entry-progress-fill');
 
+// 剧情引导弹层(检票通过后提示开启剧情)
+const storyGuideOverlay = document.getElementById('story-guide-overlay');
+const guideNickname = document.getElementById('guide-nickname');
+const guideStartBtn = document.getElementById('guide-start-btn');
+const guideExploreBtn = document.getElementById('guide-explore-btn');
+
 // ==========================================
 // 1. Three.js 初始化(原版逐行对应)
 // ==========================================
@@ -2010,15 +2016,36 @@ function enterGalaxy() {
             entryOverlay.classList.add('hidden');
             setTimeout(() => { entryOverlay.style.display = 'none'; }, 700);
 
-            // 功能介绍启动即自动展示,无需任何点击(1s 后弹出,等转场尘埃落定)
-            // 卡冈图雅介绍面板不在此预展示:启动视角在主星,应在用户点击/跳转到黑洞时才出现
-            setTimeout(() => {
-                document.getElementById('instructions-panel').classList.add('open');
-            }, 1000);
+            // 检票通过后先弹出「开启剧情」引导;用户选择自由探索时再自动展开功能介绍
+            setTimeout(showStoryGuide, 900);
         }
         // 摄像头失败:initMediaPipe 已设置错误文案与"重试"按钮,用户可再次点击重试
     });
 }
+
+// ---------- 剧情引导(登录后提示开启剧情) ----------
+function showStoryGuide() {
+    const name = nicknameInput.value.trim();
+    guideNickname.textContent = name ? '，' + name : '';
+    storyGuideOverlay.classList.add('show');
+}
+
+function dismissStoryGuide() {
+    storyGuideOverlay.classList.remove('show');
+    // 功能介绍在引导关闭后自动展示(等遮罩淡出)
+    setTimeout(() => {
+        document.getElementById('instructions-panel').classList.add('open');
+    }, 400);
+}
+
+guideStartBtn.addEventListener('click', () => {
+    location.href = '/game/story.html?v=001';
+});
+guideExploreBtn.addEventListener('click', dismissStoryGuide);
+// 点击弹层空白处等同于先逛逛
+storyGuideOverlay.addEventListener('click', (e) => {
+    if (e.target === storyGuideOverlay) dismissStoryGuide();
+});
 
 entryBtn.addEventListener('click', handleEnter);
 captchaInput.addEventListener('keydown', (e) => {

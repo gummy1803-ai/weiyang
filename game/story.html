@@ -107,6 +107,53 @@
     }
     #muted-hint.show { display: block; }
     @keyframes hintPulse { 0%,100% { box-shadow: 0 0 8px rgba(167,139,250,.3);} 50% { box-shadow: 0 0 20px rgba(167,139,250,.7);} }
+
+    /* 终章完结面板:剧情结束后选择返回星系或重新开始 */
+    #ending-box {
+        position: fixed; inset: 0; z-index: 30;
+        background: radial-gradient(ellipse at center, rgba(10,8,22,.82), rgba(0,0,0,.95));
+        backdrop-filter: blur(6px);
+        display: none; flex-direction: column; align-items: center; justify-content: center;
+        gap: 16px; padding: 30px; text-align: center;
+    }
+    #ending-box.show { display: flex; animation: endingFade .7s ease; }
+    @keyframes endingFade { from { opacity: 0; } to { opacity: 1; } }
+    .end-icon { font-size: 54px; line-height: 1; filter: drop-shadow(0 0 16px rgba(251,191,36,.6)); }
+    .end-act {
+        font-size: 12px; letter-spacing: 8px; font-weight: 700; color: #fbbf24;
+        text-shadow: 0 0 12px rgba(251,191,36,.6);
+    }
+    .end-title {
+        font-size: 32px; font-weight: 800; letter-spacing: 10px; text-indent: 10px; color: #f3e8ff;
+        text-shadow: 0 0 22px rgba(167,139,250,.7), 0 2px 6px rgba(0,0,0,.9);
+    }
+    .end-divider {
+        width: 80px; height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(251,191,36,.85), transparent);
+    }
+    .end-sub {
+        color: rgba(255,255,255,.68); font-size: 14px; line-height: 2.1; letter-spacing: 1px;
+        max-width: 500px;
+    }
+    .end-btns {
+        display: flex; gap: 18px; margin-top: 12px; flex-wrap: wrap; justify-content: center;
+    }
+    .end-btn {
+        padding: 13px 30px; border-radius: 26px; cursor: pointer;
+        font-family: inherit; font-size: 14px; font-weight: 800; letter-spacing: 3px;
+        transition: all .25s;
+    }
+    .end-btn-primary {
+        border: 1.5px solid rgba(251,191,36,.85);
+        background: linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b);
+        color: #1a1206; box-shadow: 0 0 24px rgba(251,170,60,.4);
+    }
+    .end-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 38px rgba(251,170,60,.72); }
+    .end-btn-ghost {
+        border: 1.5px solid rgba(167,139,250,.6); background: rgba(15,15,35,.7); color: #c4b5fd;
+    }
+    .end-btn-ghost:hover { border-color: rgba(196,181,253,.95); box-shadow: 0 0 20px rgba(167,139,250,.5); }
+    .end-tip { margin-top: 2px; font-size: 12px; letter-spacing: 1px; color: rgba(255,255,255,.35); }
 </style>
 </head>
 <body>
@@ -142,6 +189,24 @@
     <button id="error-continue">继续游戏 →</button>
 </div>
 
+<!-- 终章完结面板:剧情全部结束后选择去向 -->
+<div id="ending-box">
+    <div class="end-icon">🪐</div>
+    <div class="end-act">FINALE · 回 家</div>
+    <div class="end-title">剧情完结</div>
+    <div class="end-divider"></div>
+    <div class="end-sub">
+        从卡冈图雅的惊鸿一「捏」，到四颗星球的离谱相遇——<br>
+        穿越再远，旅程的终点永远是家。<br>
+        欢迎回到离谱星系。
+    </div>
+    <div class="end-btns">
+        <button class="end-btn end-btn-primary" id="end-galaxy-btn">🪐 返回离谱星系</button>
+        <button class="end-btn end-btn-ghost" id="end-restart-btn">🔄 重新开始剧情</button>
+    </div>
+    <div class="end-tip">星系仍在自由模式等你探索</div>
+</div>
+
 <script>
 (function () {
     'use strict';
@@ -171,6 +236,7 @@
     var meta = STORIES[vid] || STORIES['001'];
     if (!STORIES[vid]) vid = '001';
     var nextUrl = safeNext(qs('next'), meta.next);
+    var isFinal = (vid === '007');   // 终章:结束后弹完结面板,不再自动跳转
 
     // ── DOM ────────────────────────────────────────────────────
     var video = document.getElementById('video');
@@ -202,6 +268,26 @@
         location.href = nextUrl;
     }
 
+    // ── 终章完结面板:返回离谱星系 / 重新开始剧情 ───────────────
+    var endingBox = document.getElementById('ending-box');
+    function showEnding() {
+        if (jumped) return;
+        jumped = true;
+        try { video.pause(); } catch (e) {}
+        actBadge.classList.remove('show');
+        controls.classList.remove('show');
+        mutedHint.classList.remove('show');
+        endingBox.classList.add('show');
+    }
+    document.getElementById('end-galaxy-btn').addEventListener('click', function () {
+        location.href = '/galaxy.html';
+    });
+    document.getElementById('end-restart-btn').addEventListener('click', function () {
+        location.href = 'story.html?v=001';
+    });
+    // 终章时把跳过键改为「结束剧情」,语义更准确
+    if (isFinal) skipBtn.textContent = '结束剧情 ⏹';
+
     // ── 视频源 + 事件 ─────────────────────────────────────────
     video.src = '/story-video/' + vid;
 
@@ -212,7 +298,7 @@
         setTimeout(function () { actBadge.classList.remove('show'); }, 3200);
         tryAutoplay();
     });
-    video.addEventListener('ended', goNext);
+    video.addEventListener('ended', function () { isFinal ? showEnding() : goNext(); });
     video.addEventListener('error', function () {
         loading.classList.add('hidden');
         errorBox.classList.add('show');
@@ -275,7 +361,7 @@
         updateSoundBtn();
     });
 
-    skipBtn.addEventListener('click', goNext);
+    skipBtn.addEventListener('click', function () { isFinal ? showEnding() : goNext(); });
     errorContinue.addEventListener('click', goNext);
 
     function fmt(t) {
@@ -296,7 +382,7 @@
     // 键盘:空格暂停/继续,任意键可解除静音;回车/ESC 跳过
     document.addEventListener('keydown', function (e) {
         if (e.code === 'Space') { e.preventDefault(); playBtn.click(); }
-        else if (e.key === 'Enter' || e.key === 'Escape') { goNext(); }
+        else if (e.key === 'Enter' || e.key === 'Escape') { isFinal ? showEnding() : goNext(); }
         else if (video.muted) { unmute(); }
     });
 
