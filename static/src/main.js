@@ -18,6 +18,7 @@ import { assertValidSpec, validateFactoryOutput } from './PlanetSpec.js';
 import { PLANET_SPECS } from './planets/index.js?v=20260906v15';
 import { api } from './api.js';
 import { startEntryBackground, burstAndDestroy } from './entryBackground.js';
+import { initGestureText, handleGestureFrame, isGestureTextMode, resetGestureState } from './gestureText.js?v=20260912v1';
 
 // ===== 配置(与原始 index.html 一致,除标注外) =====
 const CONFIG = {
@@ -1506,6 +1507,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (overlay) {
         overlay.style.pointerEvents = 'none';
     }
+    // 手势-文本映射系统初始化(模式按钮/设置面板/粒子canvas)
+    try { initGestureText(); } catch (e) { console.warn('[gestureText] init failed', e); }
 });
 
 // ==========================================
@@ -1525,14 +1528,21 @@ function updateCamera() {
     }
 
     // 1. 处理旋转(死区 0.1 防抖 + 非线性曲线:小动作精细、大动作加速)
-    if (Math.abs(cameraState.handRotation) > 0.1) {
+    if (isGestureTextMode()) {
+        cameraState.handRotation = 0; // 手势文本模式下不响应旋转
+    } else if (Math.abs(cameraState.handRotation) > 0.1) {
         const raw = cameraState.handRotation;
         const adjusted = Math.sign(raw) * Math.pow(Math.abs(raw), 1.15);
         cameraState.phi += adjusted * CONFIG.rotationSpeedMultiplier;
     }
 
     // 2. 处理缩放(握拳 vs 张开)
-    if (cameraState.isFist) {
+    // 手势文本模式下不响应手势缩放,并清除可能残留的状态
+    if (isGestureTextMode()) {
+        cameraState.isFist = false;
+        cameraState.isOpen = false;
+        cameraState.zoomVelocity *= 0.5;
+    } else if (cameraState.isFist) {
         // 握拳: 远离,加速运动
         cameraState.zoomVelocity += CONFIG.fistAcceleration;
     } else if (cameraState.isOpen) {
@@ -1655,6 +1665,17 @@ function onResults(results) {
         // 绘制骨架到小窗
         drawConnectors(previewCtx, landmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 2});
         drawLandmarks(previewCtx, landmarks, {color: '#FF0000', lineWidth: 1, radius: 2});
+
+        // 手势文本模式:完全接管手势识别,不设置任何相机控制状态(旋转/缩放)
+        if (isGestureTextMode()) {
+            const g = handleGestureFrame(landmarks);
+            if (g) {
+                statusEl.innerText = `手势文本: ${g}`;
+                statusEl.style.color = '#ffaa44';
+            }
+            previewCtx.restore();
+            return;
+        }
 
         // 1. 判断旋转(手腕(0)与中指指根(9)的 X 坐标差值)
         const wrist = landmarks[0];
