@@ -18,7 +18,7 @@ import { assertValidSpec, validateFactoryOutput } from './PlanetSpec.js';
 import { PLANET_SPECS } from './planets/index.js?v=20260906v15';
 import { api } from './api.js';
 import { startEntryBackground, burstAndDestroy } from './entryBackground.js';
-import { initGestureText, handleGestureFrame, isGestureTextMode, resetGestureState } from './gestureText.js?v=20260912v1';
+import { initGestureText, handleGestureFrame, isGestureTextMode, resetGestureState } from './gestureText.js?v=20260912v5';
 
 // ===== 配置(与原始 index.html 一致,除标注外) =====
 const CONFIG = {
