@@ -47,6 +47,38 @@
             text-shadow: 0 0 10px rgba(255, 166, 0, 0.8);
         }
 
+        #start-journey-btn {
+            position: fixed;
+            left: 24px;
+            bottom: 28px;
+            z-index: 18;
+            pointer-events: auto;
+            padding: 13px 30px;
+            border-radius: 26px;
+            border: 1.5px solid rgba(251, 191, 36, 0.75);
+            background: linear-gradient(90deg, rgba(120, 60, 10, 0.75), rgba(150, 40, 30, 0.75));
+            color: #ffe9b8;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 0 20px rgba(251, 150, 30, 0.35);
+            transition: all .25s;
+            animation: journeyPulse 2.2s ease-in-out infinite;
+        }
+        #start-journey-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 32px rgba(251, 170, 60, 0.7);
+            border-color: #ffd98a;
+            color: #fff7e6;
+        }
+        @keyframes journeyPulse {
+            0%, 100% { box-shadow: 0 0 16px rgba(251, 150, 30, 0.35); }
+            50% { box-shadow: 0 0 30px rgba(251, 170, 60, 0.75); }
+        }
+
         .instruction {
             margin-top: 10px;
             font-size: 0.9rem;
@@ -769,6 +801,8 @@
 
     <div id="ui-layer">
         <h1>粒子星系</h1>
+        <button id="start-journey-btn" onclick="location.href='/game/story.html?v=001'"
+            title="从序章剧情开始四关星际旅程">🚀 开始星际旅程</button>
         <div id="instructions-panel">
             <div id="instructions-toggle">
                 <span class="toggle-icon">▶</span> 功能介绍

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>剧情 · 离谱星际穿越</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
+    #stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #000; }
+    video { max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; background: #000; }
+
+    /* 顶部剧情标题 */
+    #act-badge {
+        position: fixed; top: 26px; left: 50%; transform: translateX(-50%);
+        z-index: 20; text-align: center; pointer-events: none;
+        opacity: 0; transition: opacity .8s;
+    }
+    #act-badge.show { opacity: 1; }
+    #act-badge .act-no {
+        font-size: 12px; letter-spacing: 6px; color: #fbbf24; font-weight: 700; margin-bottom: 6px;
+        text-shadow: 0 0 12px rgba(251,191,36,.7);
+    }
+    #act-badge .act-name {
+        font-size: 24px; font-weight: 800; letter-spacing: 4px; color: #f3e8ff;
+        text-shadow: 0 0 18px rgba(167,139,250,.8), 0 2px 6px rgba(0,0,0,.9);
+    }
+
+    /* 底部控制条 */
+    #controls {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+        padding: 18px 26px calc(18px + env(safe-area-inset-bottom));
+        background: linear-gradient(transparent, rgba(0,0,0,.75));
+        display: flex; align-items: center; gap: 16px;
+        opacity: 0; transition: opacity .4s;
+    }
+    #stage:hover ~ #controls, #controls:hover, #controls.show { opacity: 1; }
+    #play-state {
+        width: 38px; height: 38px; flex-shrink: 0; border-radius: 50%;
+        border: 1.5px solid rgba(251,191,36,.7); background: rgba(15,15,25,.7);
+        color: #fbbf24; font-size: 15px; cursor: pointer; display: flex;
+        align-items: center; justify-content: center; backdrop-filter: blur(8px);
+    }
+    #play-state:hover { box-shadow: 0 0 14px rgba(251,191,36,.5); }
+    #progress {
+        flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18);
+        cursor: pointer; position: relative; overflow: hidden;
+    }
+    #progress-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
+        background: linear-gradient(90deg, #fbbf24, #a78bfa); border-radius: 2px; }
+    #time-label { font-size: 12px; color: rgba(255,255,255,.75); min-width: 92px; text-align: right;
+        font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+    #sound-btn, #skip-btn {
+        flex-shrink: 0; padding: 8px 16px; border-radius: 18px; cursor: pointer;
+        font-family: inherit; font-size: 13px; font-weight: 700; letter-spacing: 2px;
+        backdrop-filter: blur(8px); transition: all .2s;
+    }
+    #sound-btn {
+        border: 1.5px solid rgba(167,139,250,.6); background: rgba(15,15,35,.7); color: #c4b5fd;
+    }
+    #sound-btn:hover { box-shadow: 0 0 14px rgba(167,139,250,.5); }
+    #skip-btn {
+        border: 1.5px solid rgba(251,191,36,.6); background: rgba(35,25,10,.7); color: #fbbf24;
+    }
+    #skip-btn:hover { background: rgba(251,191,36,.18); box-shadow: 0 0 14px rgba(251,191,36,.5); }
+
+    /* 加载层 */
+    #loading {
+        position: fixed; inset: 0; z-index: 30; background: #000;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+        transition: opacity .5s;
+    }
+    #loading.hidden { opacity: 0; pointer-events: none; }
+    .spinner {
+        width: 52px; height: 52px; border-radius: 50%;
+        border: 3px solid rgba(167,139,250,.2); border-top-color: #fbbf24;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading .load-text { color: rgba(243,232,255,.8); font-size: 14px; letter-spacing: 4px; }
+    #loading .load-sub { color: rgba(243,232,255,.4); font-size: 12px; letter-spacing: 2px; }
+
+    /* 错误层 */
+    #error-box {
+        position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.92);
+        display: none; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+        padding: 30px; text-align: center;
+    }
+    #error-box.show { display: flex; }
+    #error-box .err-icon { font-size: 48px; }
+    #error-box .err-title { color: #fca5a5; font-size: 18px; font-weight: 700; letter-spacing: 2px; }
+    #error-box .err-sub { color: rgba(255,255,255,.5); font-size: 13px; line-height: 1.8; max-width: 420px; }
+    #error-continue {
+        margin-top: 6px; padding: 11px 30px; border-radius: 22px; cursor: pointer;
+        border: 1.5px solid rgba(251,191,36,.7); background: rgba(35,25,10,.75);
+        color: #fbbf24; font-family: inherit; font-size: 14px; font-weight: 700; letter-spacing: 3px;
+    }
+    #error-continue:hover { box-shadow: 0 0 18px rgba(251,191,36,.55); }
+
+    /* 静音自动播放提示 */
+    #muted-hint {
+        position: fixed; top: 26px; right: 26px; z-index: 21;
+        padding: 9px 18px; border-radius: 20px; cursor: pointer;
+        background: rgba(15,15,35,.78); border: 1.5px solid rgba(167,139,250,.55);
+        color: #c4b5fd; font-size: 13px; font-weight: 700; letter-spacing: 1px;
+        backdrop-filter: blur(8px); display: none; animation: hintPulse 2s ease-in-out infinite;
+    }
+    #muted-hint.show { display: block; }
+    @keyframes hintPulse { 0%,100% { box-shadow: 0 0 8px rgba(167,139,250,.3);} 50% { box-shadow: 0 0 20px rgba(167,139,250,.7);} }
+</style>
+</head>
+<body>
+<div id="stage">
+    <video id="video" playsinline preload="auto" src=""></video>
+</div>
+
+<div id="act-badge">
+    <div class="act-no" id="act-no"></div>
+    <div class="act-name" id="act-name"></div>
+</div>
+
+<div id="muted-hint">🔊 点击开启声音</div>
+
+<div id="controls" class="show">
+    <button id="play-state" title="播放/暂停">⏸</button>
+    <div id="progress"><div id="progress-fill"></div></div>
+    <span id="time-label">00:00 / 00:00</span>
+    <button id="sound-btn">🔇 静音</button>
+    <button id="skip-btn">跳过剧情 ⏭</button>
+</div>
+
+<div id="loading">
+    <div class="spinner"></div>
+    <div class="load-text" id="load-title">正在载入剧情</div>
+    <div class="load-sub">视频较大，首次加载请稍候…</div>
+</div>
+
+<div id="error-box">
+    <div class="err-icon">🎬</div>
+    <div class="err-title">剧情视频加载失败</div>
+    <div class="err-sub" id="err-msg">请确认服务器正在运行，并从 http://localhost:8080 访问。你也可以直接跳过剧情继续游戏。</div>
+    <button id="error-continue">继续游戏 →</button>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    // ── 剧情元数据:ID → {幕次, 名称, 默认下一站} ──────────────────
+    var STORIES = {
+        '001': { act: '序  章', name: '开 场', next: 'story.html?v=002' },
+        '002': { act: '第一幕 · 启程', name: '开 锁', next: 'level1.html' },
+        '003': { act: '第二幕 · 遇袭', name: '遭 遇 海 盗', next: 'level2.html' },
+        '004': { act: '第三幕 · 奇遇', name: '遭 遇 离 谱', next: 'level3.html' },
+        '005': { act: '第三幕 · 惜别', name: '告 别 离 谱', next: 'story.html?v=006' },
+        '006': { act: '第四幕 · 险途', name: '小 行 星', next: 'level4.html' },
+        '007': { act: '终  章', name: '回 家', next: '/' }
+    };
+
+    function qs(name) {
+        var m = new RegExp('[?&]' + name + '=([^&]*)').exec(location.search);
+        return m ? decodeURIComponent(m[1]) : '';
+    }
+    // 仅允许同源相对跳转,杜绝开放重定向
+    function safeNext(url, fallback) {
+        if (url && /^(level[1-4]\.html|story\.html|\.\/|\/)/.test(url) && url.indexOf('//') === -1) return url;
+        return fallback;
+    }
+
+    var vid = qs('v') || '001';
+    var meta = STORIES[vid] || STORIES['001'];
+    if (!STORIES[vid]) vid = '001';
+    var nextUrl = safeNext(qs('next'), meta.next);
+
+    // ── DOM ────────────────────────────────────────────────────
+    var video = document.getElementById('video');
+    var loading = document.getElementById('loading');
+    var errorBox = document.getElementById('error-box');
+    var actBadge = document.getElementById('act-badge');
+    var actNo = document.getElementById('act-no');
+    var actName = document.getElementById('act-name');
+    var playBtn = document.getElementById('play-state');
+    var progress = document.getElementById('progress');
+    var progressFill = document.getElementById('progress-fill');
+    var timeLabel = document.getElementById('time-label');
+    var soundBtn = document.getElementById('sound-btn');
+    var skipBtn = document.getElementById('skip-btn');
+    var errorContinue = document.getElementById('error-continue');
+    var mutedHint = document.getElementById('muted-hint');
+    var controls = document.getElementById('controls');
+    var loadTitle = document.getElementById('load-title');
+
+    actNo.textContent = meta.act;
+    actName.textContent = meta.name;
+    loadTitle.textContent = '正在载入 · ' + meta.name.replace(/\s/g, '');
+
+    // ── 跳转 ───────────────────────────────────────────────────
+    var jumped = false;
+    function goNext() {
+        if (jumped) return;
+        jumped = true;
+        location.href = nextUrl;
+    }
+
+    // ── 视频源 + 事件 ─────────────────────────────────────────
+    video.src = '/story-video/' + vid;
+
+    video.addEventListener('loadeddata', function () {
+        loading.classList.add('hidden');
+        actBadge.classList.add('show');
+        controls.classList.add('show');
+        setTimeout(function () { actBadge.classList.remove('show'); }, 3200);
+        tryAutoplay();
+    });
+    video.addEventListener('ended', goNext);
+    video.addEventListener('error', function () {
+        loading.classList.add('hidden');
+        errorBox.classList.add('show');
+        var code = video.error ? video.error.code : '?';
+        document.getElementById('err-msg').textContent =
+            '视频ID ' + vid + ' 加载失败(错误码 ' + code + ')。请确认服务器正在运行并从 http://localhost:8080 访问，也可以直接跳过剧情。';
+    }, true);
+    // 长时间停在加载状态也给出兜底(例如视频文件缺失时部分浏览器不触发 error)
+    var loadWatchdog = setTimeout(function () {
+        if (video.readyState < 2 && !jumped) {
+            loading.classList.add('hidden');
+            errorBox.classList.add('show');
+        }
+    }, 12000);
+    video.addEventListener('playing', function () { clearTimeout(loadWatchdog); });
+
+    // ── 自动播放:先尝试有声,被浏览器拦截则静音 ─────────────────
+    function tryAutoplay() {
+        var p = video.play();
+        if (p && p.catch) {
+            p.then(function () {
+                // 有声播放成功
+                video.muted = false;
+                updateSoundBtn();
+            }).catch(function () {
+                video.muted = true;
+                var p2 = video.play();
+                if (p2 && p2.catch) p2.catch(function () { /* 用户仍可点播放按钮 */ });
+                mutedHint.classList.add('show');
+                updateSoundBtn();
+            });
+        }
+    }
+
+    function unmute() {
+        video.muted = false;
+        var p = video.play();
+        if (p && p.catch) p.catch(function () {});
+        mutedHint.classList.remove('show');
+        updateSoundBtn();
+    }
+    mutedHint.addEventListener('click', unmute);
+
+    function updateSoundBtn() {
+        soundBtn.textContent = video.muted ? '🔇 静音' : '🔊 有声';
+    }
+
+    // ── 控制条交互 ─────────────────────────────────────────────
+    playBtn.addEventListener('click', function () {
+        if (video.paused) { video.play(); playBtn.textContent = '⏸'; }
+        else { video.pause(); playBtn.textContent = '▶'; }
+    });
+    video.addEventListener('play', function () { playBtn.textContent = '⏸'; });
+    video.addEventListener('pause', function () { playBtn.textContent = '▶'; });
+
+    soundBtn.addEventListener('click', function () {
+        video.muted = !video.muted;
+        if (!video.muted && video.paused) video.play();
+        mutedHint.classList.toggle('show', video.muted);
+        updateSoundBtn();
+    });
+
+    skipBtn.addEventListener('click', goNext);
+    errorContinue.addEventListener('click', goNext);
+
+    function fmt(t) {
+        if (!isFinite(t)) t = 0;
+        var m = Math.floor(t / 60), s = Math.floor(t % 60);
+        return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+    video.addEventListener('timeupdate', function () {
+        if (video.duration) progressFill.style.width = (video.currentTime / video.duration * 100) + '%';
+        timeLabel.textContent = fmt(video.currentTime) + ' / ' + fmt(video.duration);
+    });
+    progress.addEventListener('click', function (e) {
+        if (!video.duration) return;
+        var r = progress.getBoundingClientRect();
+        video.currentTime = (e.clientX - r.left) / r.width * video.duration;
+    });
+
+    // 键盘:空格暂停/继续,任意键可解除静音;回车/ESC 跳过
+    document.addEventListener('keydown', function (e) {
+        if (e.code === 'Space') { e.preventDefault(); playBtn.click(); }
+        else if (e.key === 'Enter' || e.key === 'Escape') { goNext(); }
+        else if (video.muted) { unmute(); }
+    });
+
+    // 控制条平时淡出(加载完成3秒后)
+    setTimeout(function () { if (!video.paused) controls.classList.remove('show'); }, 3600);
+    video.addEventListener('pause', function () { controls.classList.add('show'); });
+})();
+</script>
+</body>
+</html>

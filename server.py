@@ -21,8 +21,21 @@ from flask import Flask, request, jsonify, send_from_directory
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, 'static')  # Web 资产目录
+GAME_DIR = os.path.join(BASE_DIR, 'game')      # 游戏关卡目录
+VIDEO_DIR = os.path.join(BASE_DIR, '视频')      # 剧情视频目录(中文文件名,经映射路由访问)
 DB_PATH = os.path.join(BASE_DIR, 'visits.db')
 PORT = int(os.environ.get('PORT', 8080))  # PaaS(Render 等)注入 PORT,本地默认 8080
+
+# 剧情视频ID → 实际文件名(避免URL中文编码问题)
+STORY_VIDEOS = {
+    '001': '001开场.mp4',
+    '002': '002开锁.mp4',
+    '003': '003遭遇海盗.mp4',
+    '004': '004遭遇离谱.mp4',
+    '005': '005告别离谱.mp4',
+    '006': '006小行星.mp4',
+    '007': '007回家.mp4',
+}
 
 app = Flask(__name__, static_folder=None)
 
@@ -51,6 +64,9 @@ init_db()
 # ── 中间件: 禁缓存头 ──────────────────────────────────────────────
 @app.after_request
 def add_no_cache(response):
+    # 剧情视频体积大,允许缓存(其路由内已单独设置 Cache-Control)
+    if request.path.startswith('/story-video/'):
+        return response
     # 静态文件和 API 都禁缓存(开发期)
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
@@ -66,6 +82,23 @@ def serve_root():
 def serve_static(path):
     # API 路由已在上方捕获,这里兜底
     return send_from_directory(STATIC_DIR, path)
+
+# ── 游戏关卡托管(game/ 目录) ────────────────────────────────────
+@app.route('/game/<path:path>')
+def serve_game(path):
+    return send_from_directory(GAME_DIR, path)
+
+# ── 剧情视频托管(视频/ 目录,数字ID映射中文文件名,原生支持Range拖动) ──
+@app.route('/story-video/<vid>')
+def serve_story_video(vid):
+    filename = STORY_VIDEOS.get(vid)
+    if not filename:
+        return jsonify({'error': '未知视频ID'}), 404
+    resp = send_from_directory(VIDEO_DIR, filename, mimetype='video/mp4', conditional=True)
+    # 视频体积较大,允许浏览器缓存(与静态页面的 no-store 区分开)
+    resp.headers['Cache-Control'] = 'public, max-age=3600'
+    resp.headers.pop('Pragma', None)
+    return resp
 
 # ── API 路由 ──────────────────────────────────────────────────────
 @app.route('/api/stats', methods=['GET'])

@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>第1关 · 三道密码锁 · 离谱星际穿越</title>
+<script>
+// 首次进入第1关:先播序章剧情(001开场→002开锁→回本关)。会话内只播一次。
+// 先置标记再跳转,即使剧情页加载失败也不会造成重定向死循环。
+if (!sessionStorage.getItem('gxy_story_seen')) {
+    sessionStorage.setItem('gxy_story_seen', '1');
+    location.replace('story.html?v=001&next=' + encodeURIComponent('story.html?v=002&next=level1.html'));
+}
+</script>
 <style>
 :root{
     --bg:#0a0a14;
@@ -167,7 +175,7 @@ kbd{display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.08);borde
 </head>
 <body>
 <div style="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:999;display:none;gap:8px;font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:12px;letter-spacing:1px;white-space:nowrap"><a href="level1.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);background:rgba(251,191,36,0.22);border-color:#fbbf24;color:#fbbf24;font-weight:700;">1·三道密码锁</a><a href="level2.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">2·星际海盗战</a><a href="level3.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">3·离谱星人盘问</a><a href="level4.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">4·穿越小行星带</a></div>
-<div id="skip-btn" onclick="location.href='level2.html'" style="position:fixed;top:12px;right:12px;z-index:9999;padding:6px 14px;border:1.5px solid rgba(251,191,36,0.6);border-radius:18px;background:rgba(15,15,25,0.75);backdrop-filter:blur(8px);color:#fbbf24;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:2px;user-select:none;-webkit-tap-highlight-color:transparent;box-shadow:0 0 12px rgba(251,191,36,0.2);">跳过本关 ⏭</div>
+<div id="skip-btn" onclick="location.href='story.html?v=003'" style="position:fixed;top:12px;right:12px;z-index:9999;padding:6px 14px;border:1.5px solid rgba(251,191,36,0.6);border-radius:18px;background:rgba(15,15,25,0.75);backdrop-filter:blur(8px);color:#fbbf24;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:2px;user-select:none;-webkit-tap-highlight-color:transparent;box-shadow:0 0 12px rgba(251,191,36,0.2);">跳过本关 ⏭</div>
 <div id="view-level1" class="view" style="display:none">
     <canvas id="canvas-l1" class="game-canvas"></canvas>
     <div id="l1-screen-flash" class="screen-flash"></div>
@@ -227,7 +235,7 @@ kbd{display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.08);borde
     <div class="pass-screen" id="l1-pass-screen">
         <div class="title">启动成功</div>
         <div class="sub">穿梭机引擎已启动，向第二关进发</div>
-        <button onclick="location.href='level2.html'">继续 →</button>
+        <button onclick="location.href='story.html?v=003'">继续 →</button>
     </div>
 </div>
 
