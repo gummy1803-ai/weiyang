@@ -378,28 +378,129 @@ const brightnessSteps = [
 ];
 let bloomPassRef = null; // initThree 时赋值
 
-/** 动态生成底部导航按钮栏(数据驱动) */
+/** 动态生成星球目录(扇形展开) */
 function buildPlanetNav(specs) {
     const nav = document.getElementById('planet-nav');
-    nav.innerHTML = '';
-    specs.forEach((spec, idx) => {
-        if (!spec.info) return; // 没有 info 就不生成导航按钮
-        const btn = document.createElement('button');
-        btn.className = 'nav-btn';
-        btn.textContent = spec.info.title || spec.name;
-        btn.dataset.index = idx;
-        btn.addEventListener('click', () => {
-            if (interiorActive || formationActive) return; // 黑洞内部/星系形成模式中禁止跳转,防止状态错乱
-            focusOnPlanet(idx);
-            showInfoPanel(idx);
-            updateNavActive(idx);
+    const itemsBox = document.getElementById('planet-nav-items');
+    const toggle = document.getElementById('planet-nav-toggle');
+    itemsBox.innerHTML = '';
+
+    // 读取 CSS 配置变量
+    const cs = getComputedStyle(nav);
+    const totalAngle = parseFloat(cs.getPropertyValue('--fan-angle')) || 150;   // 总角度
+    const radiusStr = cs.getPropertyValue('--fan-radius').trim() || '22vw';    // 半径(可能是 vw/px)
+    const stagger = parseFloat(cs.getPropertyValue('--fan-stagger')) || 28;     // 错峰延迟 ms
+
+    // 半径转 px:若为 vw 则按视口宽度折算(响应式)
+    const radiusPx = parseLengthToPx(radiusStr);
+
+    const halfAngle = totalAngle / 2;
+    const visibleSpecs = specs.filter(s => s.info);
+    const n = visibleSpecs.length;
+    let fanOpen = false;
+
+    visibleSpecs.forEach((spec, i) => {
+        const item = document.createElement('div');
+        item.className = 'nav-item';
+        const realIdx = specs.indexOf(spec);
+        item.dataset.index = realIdx;
+        // 扇形角度:从 -halfAngle 到 +halfAngle 均匀分布
+        const angle = n === 1 ? 0 : (-halfAngle + (2 * halfAngle * i) / (n - 1));
+        const rad = angle * Math.PI / 180;
+        // 目录置于屏幕右侧,扇形向左侧展开 → tx 取负
+        const tx = -Math.cos(rad) * radiusPx;
+        const ty = Math.sin(rad) * radiusPx;
+        item.style.setProperty('--tx', `${tx}px`);
+        item.style.setProperty('--ty', `${ty}px`);
+        // 错峰延迟:从圆心附近的项先展开(中间项 i 越靠近 n/2 延迟越小)
+        const centerDist = Math.abs(i - (n - 1) / 2);
+        const delay = centerDist * stagger;
+        item.style.setProperty('--delay', `${delay}ms`);
+
+        // 名称 + 简介(description 截取前 40 字)
+        const title = document.createElement('div');
+        title.className = 'nav-title';
+        title.textContent = spec.info.title || spec.name;
+        const desc = document.createElement('div');
+        desc.className = 'nav-desc';
+        desc.textContent = (spec.info.description || '').slice(0, 40) + ((spec.info.description || '').length > 40 ? '…' : '');
+        item.appendChild(title);
+        item.appendChild(desc);
+
+        // 卡冈图雅专属:在目录项内嵌入"黑洞演化演示"按钮,一键播放九阶段演化全过程
+        if (spec.name === 'planet1') {
+            item.classList.add('nav-item--bh');
+            const evoBtn = document.createElement('button');
+            evoBtn.type = 'button';
+            evoBtn.className = 'nav-evolve-btn';
+            evoBtn.innerHTML = '🌀 黑洞演化演示';
+            evoBtn.title = '播放卡冈图雅从星云坍缩到黑洞诞生的九阶段演化全过程';
+            evoBtn.setAttribute('aria-label', '播放卡冈图雅黑洞演化过程');
+            evoBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (interiorActive || formationActive) return;
+                // 收起扇形目录,避免遮挡演出
+                fanOpen = false;
+                toggle.classList.remove('active');
+                itemsBox.querySelectorAll('.nav-item').forEach(it => {
+                    it.style.transitionDelay = '0ms';
+                    it.classList.remove('show');
+                });
+                startFormation();
+                statusEl.innerText = '🌀 卡冈图雅演化演示开始';
+            });
+            item.appendChild(evoBtn);
+        }
+
+        item.addEventListener('click', (e) => {
+            e.stopPropagation(); // 阻止冒泡到 document 的"点击 panel 外关闭"和"收起扇形"处理器
+            if (interiorActive || formationActive) return;
+            focusOnPlanet(realIdx);
+            showInfoPanel(realIdx);
+            updateNavActive(realIdx);
         });
-        nav.appendChild(btn);
+
+        itemsBox.appendChild(item);
+    });
+
+    // 展开/收起切换
+    toggle.addEventListener('click', () => {
+        fanOpen = !fanOpen;
+        toggle.classList.toggle('active', fanOpen);
+        const items = itemsBox.querySelectorAll('.nav-item');
+        items.forEach((it, i) => {
+            const delay = parseFloat(it.style.getPropertyValue('--delay')) || 0;
+            // 展开:中间项先展开(正向错峰);收起:外圈先收(反向错峰)
+            it.style.transitionDelay = `${fanOpen ? delay : (items.length - 1 - i) * stagger * 0.6}ms`;
+            it.classList.toggle('show', fanOpen);
+        });
+    });
+
+    // 点击目录外部自动收起
+    document.addEventListener('click', (e) => {
+        if (!fanOpen) return;
+        if (!nav.contains(e.target)) {
+            fanOpen = false;
+            toggle.classList.remove('active');
+            itemsBox.querySelectorAll('.nav-item').forEach(it => {
+                it.style.transitionDelay = '0ms';
+                it.classList.remove('show');
+            });
+        }
     });
 }
 
+/** 把 CSS 长度(px/vw/vh)转成 px,用于扇形半径 */
+function parseLengthToPx(str) {
+    str = (str || '').trim();
+    if (str.endsWith('vw')) return (parseFloat(str) / 100) * window.innerWidth;
+    if (str.endsWith('vh')) return (parseFloat(str) / 100) * window.innerHeight;
+    return parseFloat(str) || 300;
+}
+
 function updateNavActive(idx) {
-    document.querySelectorAll('#planet-nav .nav-btn').forEach(b => {
+    document.querySelectorAll('#planet-nav .nav-item').forEach((b, i) => {
+        // nav-item 按 visibleSpecs 顺序生成,需用 specs.indexOf 反查真实索引不便;直接用 data-idx
         b.classList.toggle('active', parseInt(b.dataset.index) === idx);
     });
 }
@@ -1795,7 +1896,16 @@ function flushPendingVisit() {
     let pending = null;
     try { pending = localStorage.getItem(PENDING_KEY); } catch (e) { return; }
     if (!pending) return;
-    api.submitVisit(JSON.parse(pending))
+    // 补报只补统计:剥离验证码字段 —— 验证码存在服务端内存,服务重启/Render休眠唤醒后必然失效,
+    // 带上旧 captchaId 会被服务端判为"验证码已过期"返回 400,导致补报永久失败、控制台刷错。
+    // uuid 幂等键保留保证不虚增;服务端对无验证码的 visit 直接幂等记录(server.py 仅在两字段都有时才校验)。
+    let payload;
+    try {
+        payload = JSON.parse(pending);
+        delete payload.captchaId;
+        delete payload.captchaAnswer;
+    } catch (e) { return; }
+    api.submitVisit(payload)
         .then(() => { localStorage.removeItem(PENDING_KEY); console.log('[统计] 离线期间的进入记录已补报'); })
         .catch(() => { /* 下次再试 */ });
 }
