@@ -129,9 +129,9 @@ kbd{display:inline-block;padding:2px 8px;background:rgba(255,255,255,0.08);borde
 .l4-mode-card .mc-sub{font-size:11px;color:rgba(255,255,255,0.55);line-height:1.5}
 .l4-mode-card .mc-best{font-size:10px;color:var(--amber);margin-top:6px;min-height:14px}
 </style>
-<!-- MediaPipe Hands: 本地手部关键点 AI 模型 -->
-<script src="libs/mediapipe/drawing_utils.js"></script>
-<script src="libs/mediapipe/hands.js"></script>
+<!-- MediaPipe Hands: 本地手部关键点 AI 模型(复用 static/libs,避免重复二进制入库) -->
+<script src="/libs/mediapipe/drawing_utils.js"></script>
+<script src="/libs/mediapipe/hands.js"></script>
 </head>
 <body>
 <div style="position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:999;display:none;gap:8px;font-family:'PingFang SC','Microsoft YaHei',sans-serif;font-size:12px;letter-spacing:1px;white-space:nowrap"><a href="level1.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">1·三道密码锁</a><a href="level2.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">2·星际海盗战</a><a href="level3.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);color:rgba(255,255,255,0.55);">3·离谱星人盘问</a><a href="level4.html" style="text-decoration:none;padding:4px 12px;border:1px solid rgba(255,255,255,0.15);border-radius:14px;background:rgba(15,15,25,0.82);backdrop-filter:blur(8px);background:rgba(251,191,36,0.22);border-color:#fbbf24;color:#fbbf24;font-weight:700;">4·穿越小行星带</a></div>
@@ -915,7 +915,7 @@ function switchTo(viewName) {
 
         try {
             mpHands = new window.Hands({ locateFile: function(f) {
-                return 'libs/mediapipe/' + f;
+                return '/libs/mediapipe/' + f;
             }});
             mpHands.setOptions({
                 maxNumHands: 1,
