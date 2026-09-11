@@ -14,9 +14,9 @@
 //   1. belt Group 固定在原点(orbit.radius=0, speed=0) —— 岩石直接围绕恒星公转
 //      修正前: belt Group 在 orbit.radius=2100 处,内部岩石在 50~130 局部范围转小圈
 //      修正后: 岩石 distance 在 1600~2150 全局范围,围绕恒星(原点)做开普勒公转
-//   2. 轨道半径约束: 蜘蛛星云(1450) < belt(1600~2150) < GARGANTUA(2300) ✓
+//   2. 轨道半径约束: 螺旋星云(1450) < belt(1600~2150) < GARGANTUA(2300) ✓
 //   3. 速度按开普勒第三定律: 0.0006/(r/1875)^1.5,内快外慢
-//      与系统一致: carina@1100=0.0014 → belt@1875≈0.0006 → GARGANTUA@2300=0.0004
+//      与系统一致: carina@1000=0.0015 → belt@1875≈0.0006 → GARGANTUA@2300=0.0004
 // ====================================================================
 // 【必要适配】(因 PlanetSpec 契约限制)
 //   - 独立 Mesh → InstancedMesh: 原始 5336 独立 Mesh 超 maxRenderables=12 预算
@@ -31,7 +31,7 @@ import { PlanetType, assertValidSpec } from '../PlanetSpec.js?v=20260902v3';
 
 // 成员原版 CONFIG —— 保留原始美术,distance 映射到全局范围
 const CONFIG = {
-    beltInner: 1600,                // 带内边缘(>蜘蛛星云 1450,留 150 余量)
+    beltInner: 1600,                // 带内边缘(>螺旋星云 1450,留 150 余量)
     beltOuter: 2150,                 // 带外边缘(<GARGANTUA 2300,留 150 余量)
     beltWidth: 550,                  // beltOuter - beltInner = 550
     // 6 个尺寸层级(总 5000 颗,非均匀分布,中央密集)
@@ -67,7 +67,7 @@ const CONFIG = {
         { name: '明神星 Leto',     distance: 1744, radius: 0.7,  color: 0xaaaa99, angle: 5.2 },
     ],
     // 公转速度(开普勒第三定律: 0.0006 / (r/1875)^1.5)
-    // 系统一致性: carina@1100=0.0014 → belt@1875≈0.0006 → GARGANTUA@2300=0.0004
+    // 系统一致性: carina@1000=0.0015 → belt@1875≈0.0006 → GARGANTUA@2300=0.0004
     orbitSpeedBase: 0.0006,
     orbitSpeedRef: 1875,
     // 原始 beltWidth(用于 rOffset/rMargin 比例映射)
@@ -322,7 +322,7 @@ export function createAsteroidBelt() {
  * 小行星带规格 —— 交给装配器的对接描述
  *
  * 轨道约束(用户需求):
- *   蜘蛛星云(1450) < belt(1600~2150) < GARGANTUA(2300) ✓
+ *   螺旋星云(1450) < belt(1600~2150) < GARGANTUA(2300) ✓
  *
  * 运动模型修正:
  *   belt Group 固定在原点(orbit.radius=0, speed=0)
@@ -331,7 +331,7 @@ export function createAsteroidBelt() {
  *   修正后: 岩石在 1600~2150 范围围绕恒星公转(真正的大圈)
  *
  * 开普勒第三定律一致性:
- *   carina     @ 1100, speed=0.0014 → K=51.1
+ *   carina     @ 1000, speed=0.0015 → K=47.4
  *   belt       @ 1875, speed≈0.0006 → K≈47.6
  *   GARGANTUA  @ 2300, speed=0.0004 → K=44.1
  *   (内快外慢,单调递减)
@@ -357,8 +357,8 @@ export const asteroidBeltSpec = {
         subtitle: 'Asteroid Belt · 主带岩石残骸带',
         rows: [
             { label: '类型', value: '主带小行星 / 3D 岩石残骸' },
-            { label: '位置', value: '蜘蛛星云与 GARGANTUA 之间' },
-            { label: '轨道范围', value: '1600~2150(>蜘蛛星云 1450, <GARGANTUA 2300)' },
+            { label: '位置', value: '螺旋星云与 GARGANTUA 之间' },
+            { label: '轨道范围', value: '1600~2150(>螺旋星云 1450, <GARGANTUA 2300)' },
             { label: '3D岩石数', value: '~30,016 颗(6 尺寸层级 + 16 大型)' },
             { label: '总质量', value: '~4% 月球质量' },
             { label: '最大天体', value: '谷神星 / 灶神星 / 智神星' }

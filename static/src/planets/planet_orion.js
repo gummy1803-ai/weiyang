@@ -270,7 +270,7 @@ export const orionSpec = {
     name: 'orion',
     type: PlanetType.PLANET,
     factory: createOrionNebula,
-    orbit: { radius: 1450, speed: 0.0010, phase: Math.PI + Math.PI / 6, inclination: 0.12, eccentricity: 0.22, ascendingNode: 4.0 },  // 环4·倾角6.9°(×√2)
+    orbit: { radius: 1250, speed: 0.0011, phase: Math.PI + Math.PI / 6, inclination: 0.12, eccentricity: 0.22, ascendingNode: 4.0 },  // 环4·倾角6.9°(×√2) [内移至小行星带1600以内]
     appearance: { palette: [0xff4466, 0x44cc77, 0x4488cc], supportsColorCustomization: false },
     info: {
         title: '猎户星云', subtitle: 'Orion Nebula (M42) · 恒星诞生区',

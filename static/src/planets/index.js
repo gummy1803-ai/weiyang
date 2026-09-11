@@ -31,16 +31,16 @@ console.log('[planets/index] 已加载星球数量:', 13);
 // 同环 180° 错相 + 各环基础相位环绕分布,避免直线排列
 export const PLANET_SPECS = [
     coreSpec,           // 中心恒星 (orbit=0, scale 2.0x)
-    betelgeuseSpec,     // 参宿四 (环1 orbit=550, 45°)
-    saturnSpec,         // 土星 (环1 orbit=550, 225°)
-    crabSpec,           // 蟹状星云 (环2 orbit=1000, 60°)
-    rosetteSpec,        // 玫瑰星云 (环2 orbit=1000, 240°)
-    carinaSpec,         // 船底座星云 (环3 orbit=1500, 120°)
-    velaSpec,           // 船帆座星云 (环3 orbit=1500, 300°)
-    tarantulaSpec,      // 蜘蛛星云 (环4 orbit=2000, 30°)
-    orionSpec,          // 猎户星云 (环4 orbit=2000, 210°)
-    helixSpec,          // 螺旋星云 (环5 orbit=2500, 90°)
-    phoenixASpec,       // 凤凰座 A 星 (环5 orbit=2500, 270°)
-    asteroidBeltSpec,   // 小行星带 (distance 1600~2150, 固定原点) — 蜘蛛星云与 GARGANTUA 间隙
-    planet1Spec,        // GARGANTUA (最外环 orbit=3200, 90°) — 系统边界天体
+    betelgeuseSpec,     // 参宿四 (环1 orbit=400, 45°)
+    saturnSpec,         // 土星 (环1 orbit=400, 225°)
+    crabSpec,           // 蟹状星云 (环2 orbit=750, 60°)
+    rosetteSpec,        // 玫瑰星云 (环2 orbit=750, 240°)
+    carinaSpec,         // 船底座星云 (环3 orbit=1000, 120°)
+    velaSpec,           // 船帆座星云 (环3 orbit=1000, 300°)
+    tarantulaSpec,      // 蜘蛛星云 (环4 orbit=1250, 30°)
+    orionSpec,          // 猎户星云 (环4 orbit=1250, 210°)
+    helixSpec,          // 螺旋星云 (环5 orbit=1450, 90°)
+    phoenixASpec,       // 凤凰座 A 星 (环5 orbit=1450, 270°)
+    asteroidBeltSpec,   // 小行星带 (distance 1600~2150, 固定原点) — 所有星球均在带内(orbit<1600),GARGANTUA 在带外
+    planet1Spec,        // GARGANTUA (最外环 orbit=2300, 90°) — 系统边界天体(小行星带以外)
 ];
