@@ -266,12 +266,20 @@
             margin-bottom: 14px;
         }
         .entry-title {
-            font-size: 42px;
+            font-size: 34px;
             margin: 0;
-            letter-spacing: 12px;
-            text-indent: 12px;
+            letter-spacing: 6px;
+            text-indent: 6px;
             font-weight: 300;
+            white-space: nowrap;
             text-shadow: 0 0 24px rgba(255,166,0,0.35);
+        }
+        @media (max-width: 420px) {
+            .entry-title {
+                font-size: 24px;
+                letter-spacing: 3px;
+                text-indent: 3px;
+            }
         }
         .entry-divider {
             width: 56px;
@@ -332,7 +340,7 @@
             border: 1px solid rgba(255,170,0,0.45);
             border-radius: 4px;
             overflow: hidden;
-            margin-bottom: 18px;
+            margin: 0 auto 18px;
             box-shadow: 0 0 10px rgba(255,170,0,0.18);
         }
         .entry-progress-fill {
@@ -365,9 +373,15 @@
             min-height: 16px;
         }
         .entry-note {
-            margin-top: 14px;
+            margin-top: 10px;
             font-size: 11px;
-            color: rgba(255,255,255,0.3);
+            line-height: 1.7;
+            color: rgba(255,255,255,0.35);
+        }
+        .entry-note-cam {
+            margin-top: 14px;
+            color: #ffcc66;
+            font-size: 12px;
         }
 
         /* 摄像头预览小窗 */
@@ -909,7 +923,7 @@
         <div id="bg-galaxy"></div>
         <div class="entry-box">
             <div class="entry-sub">GESTURE-DRIVEN PARTICLE GALAXY</div>
-            <h1 class="entry-title">粒子星系</h1>
+            <h1 class="entry-title">离谱星系之粒子星球</h1>
             <div class="entry-divider"></div>
             <input id="nickname-input" class="entry-input" maxlength="12" placeholder="输入你的昵称(可选)" autocomplete="off">
             <div class="captcha-row">
@@ -920,7 +934,8 @@
             <div class="entry-progress"><div id="entry-progress-fill" class="entry-progress-fill"></div></div>
             <button id="entry-btn" disabled>资源调配中</button>
             <div id="entry-stats"></div>
-            <div class="entry-note">首次进入需加载手势引擎,完成后浏览器将缓存,下次秒开</div>
+            <div class="entry-note entry-note-cam">📷 本星系通过摄像头手势操控,进入前浏览器会弹出授权,请点击「允许」</div>
+            <div class="entry-note">⏳ 摄像头开启与手势引擎首次加载约需 5~20 秒,按钮变亮前请耐心等待;完成后浏览器缓存,下次秒开</div>
         </div>
     </div>
 
@@ -1029,6 +1044,6 @@
     <div id="canvas-container"></div>
 
     <!-- 装配器入口:星球清单见 src/planets/index.js -->
-    <script type="module" src="./src/main.js?v=20260913v4"></script>
+    <script type="module" src="./src/main.js?v=20260913v5"></script>
 </body>
 </html>

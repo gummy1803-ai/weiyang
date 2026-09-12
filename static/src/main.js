@@ -1905,8 +1905,8 @@ function initMediaPipe() {
 
     // 自主管理摄像头流(替代 camera_utils:该库失败时会 alert 弹窗,体验差且无法自定义提示)
     // 返回 Promise:登录页即请求权限,enterGalaxy 等它完成后再淡出进入界面
-    entryStatus.innerText = '正在请求摄像头权限,请允许...';
-    entryStatus.style.color = '#00ffcc';
+    entryStatus.innerText = '📷 正在开启摄像头:若浏览器弹出授权请点「允许」,首次加载手势模型约需 5~20 秒,请耐心等待';
+    entryStatus.style.color = '#ffcc66';
     camState = 'loading';
     return navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480, facingMode: 'user' },
@@ -1941,7 +1941,8 @@ function initMediaPipe() {
             entryStatus.innerText = assetState === 'failed' ? '网络不佳,进入后加载可能稍慢' : '就绪';
             entryStatus.style.color = assetState === 'failed' ? '#ffaa00' : '#00ffcc';
         } else {
-            entryStatus.innerText = '摄像头就绪,资源加载中...';
+            entryStatus.innerText = '摄像头已开启,手势引擎资源加载中,请稍候...';
+            entryStatus.style.color = '#ffcc66';
         }
     }).catch(err => {
         camState = 'error';
@@ -2009,7 +2010,10 @@ function preloadAssets() {
                         entryBtn.disabled = false;
                         entryBtn.innerText = '重试';
                     }
-                    // camState === 'loading':按钮保持 disabled,等摄像头授权
+                    // camState === 'loading':按钮保持 disabled,等摄像头授权与模型预热
+                    entryBtn.innerText = '等待摄像头开启';
+                    entryStatus.innerText = '资源已就绪,正在等待摄像头开启(请在浏览器弹窗点「允许」,首次约 5~20 秒)...';
+                    entryStatus.style.color = '#ffcc66';
                 }
             });
     });
@@ -2174,8 +2178,6 @@ function enterGalaxy() {
             // 转场完成 + 摄像头就绪 → 淡出进入界面,星系接管
             entryOverlay.classList.add('hidden');
             setTimeout(() => { entryOverlay.style.display = 'none'; }, 700);
-            // 记录本会话已检票:从剧情/关卡页返回星系时不再重复验证,保持流程连贯
-            try { sessionStorage.setItem('gxy_entered', '1'); } catch (e) { /* 隐私模式静默 */ }
 
             // 检票通过后先弹出「开启剧情」引导;用户选择自由探索时再自动展开功能介绍
             setTimeout(showStoryGuide, 900);
@@ -2184,10 +2186,19 @@ function enterGalaxy() {
     });
 }
 
-/** 从剧情/关卡页返回:本会话已检票,直接落回星系(不再弹验证码与剧情引导) */
+/** 从剧情完结页点「返回离谱星系」(?back=1):直接落回星系,不重复检票、不弹剧情引导。
+ *  仅该链接路径生效;直接打开/刷新 galaxy.html 仍正常显示开始检票界面。
+ *  进入后立即清掉地址栏参数,保证随后刷新会回到开始界面。 */
 function autoReenterFromStory() {
     entryOverlay.classList.add('hidden');
     entryOverlay.style.display = 'none';
+    try {
+        const u = new URL(location.href);
+        if (u.searchParams.has('back')) {
+            u.searchParams.delete('back');
+            history.replaceState(null, '', u.pathname + u.search + u.hash);
+        }
+    } catch (e) { /* 旧浏览器静默 */ }
 }
 
 // ---------- 剧情引导(登录后提示开启剧情) ----------
@@ -2238,7 +2249,8 @@ loadVisitStats();
 refreshCaptcha();
 flushPendingVisit();
 
-// 同一会话内从剧情/关卡页返回星系:检票已通过,直接落回星系(避免重复输验证码)
+// 仅当从剧情完结页点「返回离谱星系」带 ?back=1 进入时,直接落回星系(不重复检票);
+// 直接打开/刷新本页无此参数,正常显示开始检票界面
 try {
-    if (sessionStorage.getItem('gxy_entered') === '1') autoReenterFromStory();
-} catch (e) { /* 隐私模式静默 */ }
+    if (new URLSearchParams(location.search).get('back') === '1') autoReenterFromStory();
+} catch (e) { /* 静默 */ }
