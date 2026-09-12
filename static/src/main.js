@@ -347,6 +347,21 @@ let formationActive = false;
 let formationStartTime = 0;
 let formationElapsed = 0;
 let formationSpeed = 1.0;
+let formationLastStage = 0; // 已播报过的阶段编号(1~9),用于高倍速下阶段标题不被跳过
+// 九阶段时间分界(秒)与进入阶段时必显示的主标题(快进跳帧也不丢)
+const FORMATION_STAGE_BOUNDS = [6, 11, 21, 26, 31, 37, 47, 62, 70];
+const FORMATION_STAGE_TEXT = [
+    null,
+    ['星系消散', '轨道带逐渐瓦解...', '阶段 1/9'],
+    ['原始星云', '物质从虚空中缓缓凝聚...', '阶段 2/9'],
+    ['引力坍缩', '密度峰开始吸引周围物质...', '阶段 3/9'],
+    ['盘面形成', '垂直方向物质向中面坠落...', '阶段 4/9'],
+    ['奇点凝聚', '中心密度突破临界点...', '阶段 5/9'],
+    ['黑洞诞生', '事件视界正在形成...', '阶段 6/9'],
+    ['吸积盘形成', '外围气体开始落入...', '阶段 7/9'],
+    ['轨道带演化', '第一条轨道带开始凝聚...', '阶段 8/9'],
+    ['星系成型', '遥远恒星逐渐显现...', '阶段 9/9']
+];
 let formationCloud = null;
 let formationCloudData = null;
 let flashSphere = null;
@@ -360,6 +375,9 @@ let lastFrameTime = 0;
 let interiorActive = false;
 let interiorTransition = 0;
 let interiorExiting = false;
+let interiorZoom = 1.0; // 内部场景用户缩放倍数(滚轮/双指捏合),实际半径 = 8 × 倍数
+const INTERIOR_ZOOM_MIN = 0.6;  // 最近 ≈4.8,贴近奇点
+const INTERIOR_ZOOM_MAX = 10;   // 最远 ≈80,可纵观红雾与光环全貌
 let interiorParticles = null;
 let interiorRings = [];
 let interiorSingularity = null;
@@ -747,10 +765,63 @@ function initRaycaster() {
     window.addEventListener('mouseup', () => { isDragging = false; });
     renderer.domElement.addEventListener('wheel', (e) => {
         e.preventDefault();
-        if (interiorActive) return; // 内部模式半径由 updateInterior 控制
+        if (interiorActive) {
+            // 内部场景:滚轮改缩放倍数(实际半径由 updateInterior 按 8×倍数施加)
+            interiorZoom = Math.max(INTERIOR_ZOOM_MIN,
+                Math.min(INTERIOR_ZOOM_MAX, interiorZoom * (1 + e.deltaY * 0.0012)));
+            return;
+        }
         cameraState.radius += e.deltaY * 0.6;
         cameraState.radius = Math.max(CONFIG.minDistance, Math.min(CONFIG.maxDistance, cameraState.radius));
     }, { passive: false });
+
+    // 触摸支持:单指拖拽旋转视角,双指捏合缩放(内部/普通场景均可用)
+    const touchState = { mode: 'none', x: 0, y: 0, dist: 0 };
+    const touchDist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    renderer.domElement.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) {
+            touchState.mode = 'pinch';
+            touchState.dist = touchDist(e.touches);
+        } else if (e.touches.length === 1 && touchState.mode !== 'pinch') {
+            touchState.mode = 'drag';
+            touchState.x = e.touches[0].clientX;
+            touchState.y = e.touches[0].clientY;
+        }
+    }, { passive: false });
+    renderer.domElement.addEventListener('touchmove', (e) => {
+        e.preventDefault(); // 阻止页面随触摸滚动
+        if (e.touches.length === 2 && touchState.mode === 'pinch') {
+            const d = touchDist(e.touches);
+            if (touchState.dist > 0 && d > 0) {
+                const ratio = d / touchState.dist; // 双指外张 ratio>1 → 靠近(放大画面)
+                if (interiorActive) {
+                    interiorZoom = Math.max(INTERIOR_ZOOM_MIN, Math.min(INTERIOR_ZOOM_MAX, interiorZoom / ratio));
+                } else {
+                    cameraState.radius = Math.max(CONFIG.minDistance, Math.min(CONFIG.maxDistance, cameraState.radius / ratio));
+                }
+            }
+            touchState.dist = d;
+        } else if (e.touches.length === 1 && touchState.mode === 'drag') {
+            const t = e.touches[0];
+            const dx = t.clientX - touchState.x;
+            const dy = t.clientY - touchState.y;
+            cameraState.phi += dx * 0.006;
+            cameraState.theta -= dy * 0.006;
+            cameraState.theta = Math.max(0.15, Math.min(Math.PI - 0.15, cameraState.theta));
+            touchState.x = t.clientX;
+            touchState.y = t.clientY;
+        }
+    }, { passive: false });
+    const touchEnd = (e) => {
+        if (e.touches.length === 0) touchState.mode = 'none';
+        else if (e.touches.length === 1) {
+            touchState.mode = 'drag';
+            touchState.x = e.touches[0].clientX;
+            touchState.y = e.touches[0].clientY;
+        }
+    };
+    renderer.domElement.addEventListener('touchend', touchEnd, { passive: false });
+    renderer.domElement.addEventListener('touchcancel', touchEnd, { passive: false });
 
     // 黑洞内部:长按 600ms 查看简介(队友原版交互)
     let longPressTimer = null;
@@ -866,6 +937,7 @@ function startFormation() {
     formationActive = true;
     formationElapsed = 0;
     formationSpeed = 1.0;
+    formationLastStage = 0;
     bloomStrengthBoost = 0;
 
     // 形成期观看距离:坍缩星云半径可达 ~800,自动拉到能看全全程的观察距离
@@ -906,6 +978,19 @@ function updateFormation(dt) {
     formationElapsed += dt * formationSpeed;
     const elapsed = formationElapsed;
     const FO = formationOrigOpacities;
+    // 帧时间归一化系数:1x@60fps 时 ≈1;快进/高刷/掉帧时视觉速度一致且真正随倍速加快
+    const frameScale = dt * 60 * formationSpeed;
+
+    // 进入新阶段立即播报主标题(高倍速下 0.02 宽的旧时间窗会被整段跳过,改用阶段边界判定)
+    let stage = 9;
+    for (let i = 0; i < FORMATION_STAGE_BOUNDS.length; i++) {
+        if (elapsed < FORMATION_STAGE_BOUNDS[i]) { stage = i + 1; break; }
+    }
+    if (stage !== formationLastStage) {
+        formationLastStage = stage;
+        const txt = FORMATION_STAGE_TEXT[stage];
+        if (txt) showFormationText(txt[0], txt[1], txt[2]);
+    }
 
     const blackHole = getPlanetObj('planet1', 'blackHole');
     const photonRing = getPlanetObj('planet1', 'photonRing');
@@ -954,7 +1039,7 @@ function updateFormation(dt) {
         if (blackHole) blackHole.scale.setScalar(Math.max(0, 1 - t * 0.8));
         if (formationCloud) formationCloud.material.opacity = t;
 
-        updateCloudSwirl(0.2);
+        updateCloudSwirl(0.2 * frameScale);
         if (t < 0.02) showFormationText("原始星云", "物质从虚空中缓缓凝聚...", "阶段 2/9");
         if (t > 0.45 && t < 0.48) showFormationText("原始星云", "氢氦尘埃弥漫整个空间...", "阶段 2/9");
         if (t > 0.8 && t < 0.83) showFormationText("原始星云", "微小的密度涨落正在孕育...", "阶段 2/9");
@@ -973,7 +1058,7 @@ function updateFormation(dt) {
                 const localT = Math.max(0, Math.min(1, (t - p.delay) / (1 - p.delay)));
                 const easedT = localT * localT * (3 - 2 * localT);
                 const r = p.startR * (1 - easedT) + p.targetR * easedT;
-                p.currentAngle += p.swirlSpeed * (1 + easedT * 3);
+                p.currentAngle += p.swirlSpeed * (1 + easedT * 3) * frameScale;
                 const yFlat = p.startY * (1 - easedT) * (1 - easedT * 0.5);
                 cloudPos[i * 3] = r * Math.cos(p.currentAngle);
                 cloudPos[i * 3 + 1] = yFlat;
@@ -999,7 +1084,7 @@ function updateFormation(dt) {
             const cloudParams = formationCloudData.params;
             for (let i = 0; i < cloudParams.length; i++) {
                 const p = cloudParams[i];
-                p.currentAngle += p.swirlSpeed * 4;
+                p.currentAngle += p.swirlSpeed * 4 * frameScale;
                 const yDamp = p.startY * 0.1 * (1 - t) * (1 - t);
                 cloudPos[i * 3] = p.targetR * Math.cos(p.currentAngle);
                 cloudPos[i * 3 + 1] = yDamp;
@@ -1035,7 +1120,7 @@ function updateFormation(dt) {
             for (let i = 0; i < cloudParams.length; i++) {
                 const p = cloudParams[i];
                 const r = p.targetR * (1 - t * 0.2);
-                p.currentAngle += p.swirlSpeed * 5;
+                p.currentAngle += p.swirlSpeed * 5 * frameScale;
                 cloudPos[i * 3] = r * Math.cos(p.currentAngle);
                 cloudPos[i * 3 + 1] = 0;
                 cloudPos[i * 3 + 2] = r * Math.sin(p.currentAngle);
@@ -1068,7 +1153,7 @@ function updateFormation(dt) {
             for (let i = 0; i < cloudParams.length; i++) {
                 const p = cloudParams[i];
                 const r = p.targetR * Math.max(0, 1 - t * 1.3);
-                p.currentAngle += p.swirlSpeed * 7;
+                p.currentAngle += p.swirlSpeed * 7 * frameScale;
                 cloudPos[i * 3] = r * Math.cos(p.currentAngle);
                 cloudPos[i * 3 + 1] = 0;
                 cloudPos[i * 3 + 2] = r * Math.sin(p.currentAngle);
@@ -1100,11 +1185,11 @@ function updateFormation(dt) {
         if (edgeRing) edgeRing.material.opacity = FO.edge;
         if (accretionDisk) {
             accretionDisk.material.opacity = FO.disk * easedT;
-            accretionDisk.rotation.y += 0.004;
+            accretionDisk.rotation.y += 0.004 * frameScale;
         }
         if (lensingRing) {
             lensingRing.material.opacity = FO.lens * easedT * 0.4;
-            lensingRing.rotation.z += 0.002;
+            lensingRing.rotation.z += 0.002 * frameScale;
         }
         if (photonRing) {
             const pulse = 1 + Math.sin(time * 2) * 0.02;
@@ -1125,11 +1210,11 @@ function updateFormation(dt) {
         bloomStrengthBoost = 0;
         if (accretionDisk) {
             accretionDisk.material.opacity = FO.disk;
-            accretionDisk.rotation.y += 0.0015;
+            accretionDisk.rotation.y += 0.0015 * frameScale;
         }
         if (lensingRing) {
             lensingRing.material.opacity = FO.lens;
-            lensingRing.rotation.z += 0.0008;
+            lensingRing.rotation.z += 0.0008 * frameScale;
         }
         if (photonRing) {
             photonRing.material.opacity = FO.photon;
@@ -1162,11 +1247,11 @@ function updateFormation(dt) {
         });
         if (accretionDisk) {
             accretionDisk.material.opacity = FO.disk;
-            accretionDisk.rotation.y += 0.001;
+            accretionDisk.rotation.y += 0.001 * frameScale;
         }
         if (lensingRing) {
             lensingRing.material.opacity = FO.lens;
-            lensingRing.rotation.z += 0.0005;
+            lensingRing.rotation.z += 0.0005 * frameScale;
         }
         if (photonRing) {
             photonRing.material.opacity = FO.photon;
@@ -1310,6 +1395,7 @@ function enterInterior() {
     interiorActive = true;
     interiorTransition = 0;
     interiorExiting = false;
+    interiorZoom = 1.0;
 
     savedCameraRadius = cameraState.radius;
     savedBloomStrength = bloomStrengthBoost;
@@ -1353,7 +1439,7 @@ function updateInterior(dt) {
         const t = interiorTransition;
         const eased = t * t * (3 - 2 * t);
 
-        cameraState.radius = savedCameraRadius * (1 - eased) + 8 * eased;
+        cameraState.radius = savedCameraRadius * (1 - eased) + 8 * interiorZoom * eased;
         if (interiorParticles) interiorParticles.mesh.material.opacity = eased * 0.9;
         interiorRings.forEach((ring, i) => {
             ring.mesh.material.opacity = eased * (0.4 + i * 0.1);
@@ -1370,7 +1456,7 @@ function updateInterior(dt) {
         const t = interiorTransition;
         const eased = t * t * (3 - 2 * t);
 
-        cameraState.radius = savedCameraRadius * (1 - eased) + 8 * eased;
+        cameraState.radius = savedCameraRadius * (1 - eased) + 8 * interiorZoom * eased;
         if (interiorParticles) interiorParticles.mesh.material.opacity = eased * 0.9;
         interiorRings.forEach((ring, i) => {
             ring.mesh.material.opacity = eased * (0.4 + i * 0.1);
@@ -1440,8 +1526,9 @@ function updateInterior(dt) {
         interiorSingularity.material.color.setRGB(1, 0.7 + colorShift * 0.3, 0.5 + (1 - colorShift) * 0.5);
     }
 
-    // 相机轻微晃动
+    // 相机轻微晃动;稳定期每帧施加用户缩放(滚轮/双指捏合),保证缩放即时生效
     if (interiorTransition >= 1 && !interiorExiting) {
+        cameraState.radius = 8 * interiorZoom;
         cameraState.theta += Math.sin(time * 1.5) * 0.002;
         cameraState.phi += Math.sin(time * 2.1) * 0.0015;
     }
@@ -1467,6 +1554,11 @@ function hideInteriorInfoPanel() {
 }
 
 document.addEventListener('keydown', (e) => {
+    // 演化播放中按 F 快进(1x → 2x → 4x 循环),与右上角快进按钮等效
+    if ((e.key === 'f' || e.key === 'F') && formationActive) {
+        toggleFastForward();
+        return;
+    }
     // 按 3 退出黑洞内部
     if (e.key === '3' && interiorActive) {
         exitInterior();
@@ -2015,12 +2107,20 @@ function enterGalaxy() {
             // 转场完成 + 摄像头就绪 → 淡出进入界面,星系接管
             entryOverlay.classList.add('hidden');
             setTimeout(() => { entryOverlay.style.display = 'none'; }, 700);
+            // 记录本会话已检票:从剧情/关卡页返回星系时不再重复验证,保持流程连贯
+            try { sessionStorage.setItem('gxy_entered', '1'); } catch (e) { /* 隐私模式静默 */ }
 
             // 检票通过后先弹出「开启剧情」引导;用户选择自由探索时再自动展开功能介绍
             setTimeout(showStoryGuide, 900);
         }
         // 摄像头失败:initMediaPipe 已设置错误文案与"重试"按钮,用户可再次点击重试
     });
+}
+
+/** 从剧情/关卡页返回:本会话已检票,直接落回星系(不再弹验证码与剧情引导) */
+function autoReenterFromStory() {
+    entryOverlay.classList.add('hidden');
+    entryOverlay.style.display = 'none';
 }
 
 // ---------- 剧情引导(登录后提示开启剧情) ----------
@@ -2070,3 +2170,8 @@ ensureCamera(); // 登录页即请求摄像头权限,无需等到点击进入
 loadVisitStats();
 refreshCaptcha();
 flushPendingVisit();
+
+// 同一会话内从剧情/关卡页返回星系:检票已通过,直接落回星系(避免重复输验证码)
+try {
+    if (sessionStorage.getItem('gxy_entered') === '1') autoReenterFromStory();
+} catch (e) { /* 隐私模式静默 */ }

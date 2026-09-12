@@ -942,8 +942,9 @@
                     —— 卡冈图雅专属 ——<br>
                     <b>🌀 演化按钮</b>: 星球目录「GARGANTUA」项内一键播放九阶段演化<br>
                     <b>点击黑洞</b>: 聚焦并查看简介(绕黑洞旋转)<br>
-                    <b>点击黑洞3次</b>: 星系形成过程（缩小观看更佳）<br>
+                    <b>点击黑洞3次</b>: 星系形成过程（缩小观看更佳；播放中按 <b>F</b> 或右上角按钮快进 2x/4x）<br>
                     <b>按键4</b>: 进入黑洞内部 &nbsp;/&nbsp; 按 <b>3</b>: 退出内部<br>
+                    内部场景 <b>滚轮/双指捏合</b>: 自由缩放，单指拖拽: 旋转视角<br>
                     <b>按键1/2</b>: 亮度降低 / 升高
                 </div>
             </div>
@@ -976,8 +977,8 @@
         <div class="formation-stage"></div>
     </div>
 
-    <!-- 快进按钮 -->
-    <button id="fastforward-btn">⏩ 快进 2x</button>
+    <!-- 快进按钮(演化播放中也可按 F 键切换 1x/2x/4x) -->
+    <button id="fastforward-btn" title="快捷键 F:切换 1x / 2x / 4x">⏩ 快进 2x</button>
 
     <!-- 星球目录(扇形展开,由 main.js 根据 PLANET_SPECS 动态生成星球项) -->
     <div id="planet-nav">
@@ -1028,6 +1029,6 @@
     <div id="canvas-container"></div>
 
     <!-- 装配器入口:星球清单见 src/planets/index.js -->
-    <script type="module" src="./src/main.js?v=20260912v7"></script>
+    <script type="module" src="./src/main.js?v=20260913v1"></script>
 </body>
 </html>

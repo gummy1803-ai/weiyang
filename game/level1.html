@@ -5,12 +5,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>第1关 · 三道密码锁 · 离谱星际穿越</title>
 <script>
-// 首次进入第1关:先播序章剧情(001开场→002开锁→回本关)。会话内只播一次。
+// 首次进入第1关且本会话确实没看过序章(001开场/002开锁):先补播再回本关。
+// 正常剧情链路 001→002→本关 已由 story.html 分别置标记,不会再被强制重播一遍。
 // 先置标记再跳转,即使剧情页加载失败也不会造成重定向死循环。
-if (!sessionStorage.getItem('gxy_story_seen')) {
-    sessionStorage.setItem('gxy_story_seen', '1');
-    location.replace('story.html?v=001&next=' + encodeURIComponent('story.html?v=002&next=level1.html'));
-}
+(function () {
+    var needStory = true;
+    try {
+        needStory = !sessionStorage.getItem('gxy_seen_001') || !sessionStorage.getItem('gxy_seen_002');
+    } catch (e) { needStory = true; }
+    if (needStory) {
+        try { sessionStorage.setItem('gxy_story_seen', '1'); } catch (e) {}
+        location.replace('story.html?v=001&next=' + encodeURIComponent('story.html?v=002&next=level1.html'));
+    }
+})();
 </script>
 <style>
 :root{

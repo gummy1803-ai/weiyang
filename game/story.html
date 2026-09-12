@@ -237,6 +237,8 @@
     if (!STORIES[vid]) vid = '001';
     var nextUrl = safeNext(qs('next'), meta.next);
     var isFinal = (vid === '007');   // 终章:结束后弹完结面板,不再自动跳转
+    // 记录本会话已到达(播放)的分集,供关卡页判断是否需要补播序章,避免 001/002 重复播放
+    try { sessionStorage.setItem('gxy_seen_' + vid, '1'); } catch (e) {}
 
     // ── DOM ────────────────────────────────────────────────────
     var video = document.getElementById('video');
