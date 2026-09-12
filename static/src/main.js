@@ -112,6 +112,13 @@ function initThree() {
         pos: camera.position.toArray().map(v => +v.toFixed(1)),
         center: getCameraCenter(_cameraCenter).toArray().map(v => +v.toFixed(1))
     });
+    window.__formationDebug__ = () => ({ // 调试用:演化模拟时间/倍速/阶段实时状态
+        active: formationActive,
+        elapsed: +formationElapsed.toFixed(2),
+        speed: formationSpeed,
+        stage: formationLastStage,
+        now: performance.now()
+    });
     assemblePlanets(PLANET_SPECS);
 
     window.addEventListener('resize', onWindowResize);
@@ -267,12 +274,24 @@ function updateOrbitalTrails() {
         });
     }
 
+    // 性能:星系形成期轨道带正在消散淡出,冻结带内粒子运动(位置跟随仍在上面保留)
+    // 透明度已归 0 的带直接移出绘制(19500 点精灵的顶点/片元开销也省掉),阶段8淡入时自动恢复
+    if (formationActive) {
+        orbitalTrails.forEach(trail => {
+            const show = trail.mesh.material.opacity > 0.01;
+            trail.mesh.visible = show;
+            trail.orbitLine.visible = trail.orbitLine.material.opacity > 0.01;
+        });
+        return;
+    }
+    // 性能:19500 个粒子的三角运算与缓冲区上传隔帧执行,角度步长×2,视觉速度不变(省一半CPU/GPU带宽)
+    if (!perfTrailTick) return;
     orbitalTrails.forEach(trail => {
         const pos = trail.positions;
         const params = trail.params;
         for (let i = 0; i < params.length; i++) {
             const p = params[i];
-            p.angle += p.speed * 0.002;
+            p.angle += p.speed * 0.004;
             const u = p.a * Math.cos(p.angle) - p.cOff;
             const v = p.b * Math.sin(p.angle);
             const uR = u * p.cosArg - v * p.sinArg;
@@ -371,6 +390,29 @@ let lastClickTime = 0;
 let formationOrigOpacities = {};
 const _formationBHPos = new THREE.Vector3(); // 形成期间卡冈图雅实时世界坐标(星云/闪光跟随用)
 let lastFrameTime = 0;
+
+// 性能隔帧开关:重 CPU 粒子运算(轨道带 19500 / 内部 12000)两帧只算一次,运动步长×2 保持视觉速度
+let perfTrailTick = false;
+let perfParticleTick = false;
+// 自适应渲染分辨率:持续掉帧时逐级下调 pixelRatio 保底(可回退:删掉 updateAdaptiveQuality 调用即可)
+let perfFrameEMA = 16.7;
+let perfQualityAcc = 0;
+let perfQualityLevel = 0;
+const PERF_QUALITY_STEPS = [2, 1.5, 1.25, 1];
+function updateAdaptiveQuality(dt) {
+    perfFrameEMA = perfFrameEMA * 0.95 + dt * 1000 * 0.05;
+    perfQualityAcc += dt;
+    if (perfQualityAcc < 3) return; // 每 3 秒评估一次,避免瞬时波动误降
+    perfQualityAcc = 0;
+    // EMA 帧时 >20ms(约 <50fps)即降一档;实际 DPR 更低时 Math.min 自动变为空操作
+    if (perfFrameEMA > 20 && perfQualityLevel < PERF_QUALITY_STEPS.length - 1) {
+        perfQualityLevel++;
+        const pr = Math.min(window.devicePixelRatio || 1, PERF_QUALITY_STEPS[perfQualityLevel]);
+        renderer.setPixelRatio(pr);
+        composer.setPixelRatio(pr);
+        console.log('[perf] 检测到持续掉帧,渲染分辨率降档 pixelRatio =', pr);
+    }
+}
 
 let interiorActive = false;
 let interiorTransition = 0;
@@ -1273,6 +1315,8 @@ function updateFormation(dt) {
         orbitalTrails.forEach((trail, i) => {
             trail.mesh.material.opacity = FO.trails[i];
             trail.orbitLine.material.opacity = FO.orbitLines[i];
+            trail.mesh.visible = true;
+            trail.orbitLine.visible = true;
         });
         if (accretionDisk) accretionDisk.material.opacity = FO.disk;
         if (lensingRing) lensingRing.material.opacity = FO.lens;
@@ -1356,6 +1400,7 @@ function createInteriorScene() {
     });
 
     interiorParticles = { mesh: new THREE.Points(interiorGeo, interiorMat), params: interiorParams, positions, geo: interiorGeo };
+    interiorParticles.mesh.visible = false; // 入场前/退出后不参与绘制(12000 点),由 updateInterior 按过渡进度开启
     interiorGroup.add(interiorParticles.mesh);
 
     // 多层发光环
@@ -1367,6 +1412,7 @@ function createInteriorScene() {
             blending: THREE.AdditiveBlending, side: THREE.DoubleSide
         });
         const ring = new THREE.Mesh(ringGeo, ringMat);
+        ring.visible = false; // 同粒子,淡入前不绘制
         ring.rotation.x = Math.PI / 2 + (i % 2 === 0 ? 0.2 : -0.2);
         ring.rotation.z = i * 0.4;
         interiorGroup.add(ring);
@@ -1378,6 +1424,7 @@ function createInteriorScene() {
         new THREE.SphereGeometry(3, 32, 32),
         new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending })
     );
+    interiorSingularity.visible = false;
     interiorGroup.add(interiorSingularity);
 }
 
@@ -1474,21 +1521,22 @@ function updateInterior(dt) {
         }
     }
 
-    // 内部粒子螺旋坠入奇点
-    if (interiorParticles && interiorTransition > 0.3) {
+    // 内部粒子螺旋坠入奇点(性能:12000 粒子隔帧更新,步长×2 保持同等运动速度)
+    if (interiorParticles && interiorTransition > 0.3 && perfParticleTick) {
         const positions = interiorParticles.positions;
         const params = interiorParticles.params;
         const activeFactor = Math.min(1, (interiorTransition - 0.3) / 0.7);
         const time2 = time * 2;
+        const pdt = dt * 2; // 隔帧补偿
 
         for (let i = 0; i < params.length; i++) {
             const p = params[i];
-            p.theta += p.speed * dt * (0.8 + activeFactor * 1.5);
-            p.phi += Math.sin(time2 * p.wobbleSpeed + p.wobble) * 0.02 * activeFactor;
-            p.r -= p.speed * dt * (10 + activeFactor * 20);
+            p.theta += p.speed * pdt * (0.8 + activeFactor * 1.5);
+            p.phi += Math.sin(time2 * p.wobbleSpeed + p.wobble) * 0.04 * activeFactor;
+            p.r -= p.speed * pdt * (10 + activeFactor * 20);
 
             const gravityFactor = 1 + (1 - p.r / 450) * 2 * activeFactor;
-            p.theta += p.speed * dt * gravityFactor * 0.5;
+            p.theta += p.speed * pdt * gravityFactor * 0.5;
 
             if (p.r < 4) {
                 p.r = 380 + Math.random() * 180;
@@ -1538,6 +1586,12 @@ function updateInterior(dt) {
         const bloomPulse = Math.sin(time * 2) * 0.5 + Math.sin(time * 4.3) * 0.3;
         bloomStrengthBoost = Math.max(2, 3 + bloomPulse * (interiorTransition >= 1 ? 1.5 : 0.5));
     }
+
+    // 可见性随淡入淡出同步:未入场/完全退出后 12000 粒子+环+奇点不参与渲染
+    const interiorShown = interiorTransition > 0.02;
+    if (interiorParticles) interiorParticles.mesh.visible = interiorShown;
+    interiorRings.forEach(r => { r.mesh.visible = interiorShown; });
+    if (interiorSingularity) interiorSingularity.visible = interiorShown;
 }
 
 // ==========================================
@@ -1683,6 +1737,11 @@ function animate() {
     const now = performance.now();
     const dt = lastFrameTime ? Math.min((now - lastFrameTime) / 1000, 0.05) : 0.016;
     lastFrameTime = now;
+
+    // 隔帧节拍:重粒子运算两帧一次(步长×2 保速);自适应分辨率持续掉帧时自动降档
+    perfTrailTick = !perfTrailTick;
+    perfParticleTick = !perfParticleTick;
+    updateAdaptiveQuality(dt);
 
     time += 0.005;
 
@@ -1857,8 +1916,16 @@ function initMediaPipe() {
         return videoElement.play();
     }).then(() => {
         // 送帧循环:等上一帧识别完再送下一帧,避免识别任务堆积
+        // 性能:手势识别限 30fps(两次送帧至少间隔 33ms),主线程占用减半,手势体验无感知差异;
+        // 切到后台标签页时暂停推理,避免空耗 CPU/发热
+        let lastHandSend = 0;
         const detectLoop = async () => {
-            if (videoElement.readyState >= 2) {
+            if (document.hidden) {
+                requestAnimationFrame(detectLoop);
+                return;
+            }
+            if (videoElement.readyState >= 2 && performance.now() - lastHandSend >= 33) {
+                lastHandSend = performance.now();
                 try { await hands.send({ image: videoElement }); } catch (e) { /* 单帧失败忽略 */ }
             }
             requestAnimationFrame(detectLoop);
